@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef } from "react";
 import {
   Text,
   View,
@@ -10,9 +10,8 @@ import {
   Platform,
   useWindowDimensions,
   RefreshControl,
-  Modal,
   ScrollView,
-  KeyboardAvoidingView,
+  StyleSheet,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { LoginPrompt } from "@/components/login-prompt";
@@ -20,13 +19,12 @@ import { useAuth } from "@/hooks/use-auth";
 import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 function formatNum(n: number): string {
   return Number.isFinite(n) ? n.toFixed(2) : "0.00";
 }
 
-function calcFields(o: { originalPrice: string; totalPrice: string; actualTransferOut: string }) {
+function calcFields(o: { originalPrice: string | number; totalPrice: string | number; actualTransferOut: string | number }) {
   const orig = Number(o.originalPrice) || 0;
   const tot = Number(o.totalPrice) || 0;
   const actOut = Number(o.actualTransferOut) || 0;
@@ -40,18 +38,37 @@ function calcFields(o: { originalPrice: string; totalPrice: string; actualTransf
 
 type FilterType = "全部" | "已转" | "未转";
 
+// 表格列定义 - 与Excel一致的顺序
+const COLUMNS = [
+  { key: "index", label: "序号", width: 60, editable: false },
+  { key: "orderDate", label: "接单日期", width: 140, editable: true },
+  { key: "orderNo", label: "单号", width: 130, editable: true },
+  { key: "groupName", label: "群名", width: 130, editable: true },
+  { key: "originalPrice", label: "原价", width: 100, editable: true, isNumber: true },
+  { key: "origIncome", label: "原价应到手", width: 110, editable: false, isCalc: true },
+  { key: "totalPrice", label: "加价后总价", width: 110, editable: true, isNumber: true },
+  { key: "markup", label: "加价", width: 90, editable: false, isCalc: true },
+  { key: "markupIncome", label: "加价应到手", width: 110, editable: false, isCalc: true },
+  { key: "actualTransferOut", label: "实际转出", width: 100, editable: true, isNumber: true },
+  { key: "transferStatus", label: "转账状态", width: 90, editable: true, isStatus: true },
+  { key: "markupActual", label: "加价实际到手", width: 120, editable: false, isCalc: true },
+  { key: "actualIncome", label: "实际到手", width: 100, editable: false, isCalc: true, isHighlight: true },
+  { key: "registerStatus", label: "登记状态", width: 90, editable: true },
+  { key: "settlementStatus", label: "结算状态", width: 90, editable: true },
+] as const;
+
+const TOTAL_WIDTH = COLUMNS.reduce((sum, c) => sum + c.width, 0);
+
 export default function OrdersScreen() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const colors = useColors();
-  const { width } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
-  const isWide = width >= 768;
+  const { width: screenWidth } = useWindowDimensions();
 
   const [filter, setFilter] = useState<FilterType>("全部");
   const [search, setSearch] = useState("");
-  const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [editMode, setEditMode] = useState(false);
-  const [editData, setEditData] = useState<any>({});
+  const [editingRows, setEditingRows] = useState<Record<number, Record<string, string>>>({});
+  const [savingIds, setSavingIds] = useState<Set<number>>(new Set());
 
   const queryInput = useMemo(() => {
     const input: any = {};
@@ -70,11 +87,97 @@ export default function OrdersScreen() {
 
   const isAdmin = (user as any)?.role === "admin";
 
+  // 进入编辑模式时，初始化所有行的编辑数据
+  const enterEditMode = useCallback(() => {
+    if (!orders) return;
+    const rows: Record<number, Record<string, string>> = {};
+    for (const o of orders) {
+      rows[o.id] = {
+        orderDate: o.orderDate || "",
+        orderNo: o.orderNo || "",
+        groupName: o.groupName,
+        originalPrice: String(Number(o.originalPrice) || 0),
+        totalPrice: String(Number(o.totalPrice) || 0),
+        actualTransferOut: String(Number(o.actualTransferOut) || 0),
+        transferStatus: o.transferStatus,
+        registerStatus: o.registerStatus || "",
+        settlementStatus: o.settlementStatus || "",
+      };
+    }
+    setEditingRows(rows);
+    setEditMode(true);
+  }, [orders]);
+
+  const exitEditMode = useCallback(() => {
+    setEditMode(false);
+    setEditingRows({});
+  }, []);
+
+  const updateEditField = useCallback((id: number, key: string, value: string) => {
+    setEditingRows((prev) => ({
+      ...prev,
+      [id]: { ...prev[id], [key]: value },
+    }));
+  }, []);
+
+  const toggleTransferStatus = useCallback((id: number) => {
+    setEditingRows((prev) => {
+      const current = prev[id]?.transferStatus || "未转";
+      return {
+        ...prev,
+        [id]: { ...prev[id], transferStatus: current === "已转" ? "未转" : "已转" },
+      };
+    });
+  }, []);
+
+  // 保存单行
+  const saveRow = useCallback(async (id: number) => {
+    const data = editingRows[id];
+    if (!data) return;
+    setSavingIds((prev) => new Set(prev).add(id));
+    try {
+      await updateMutation.mutateAsync({
+        id,
+        orderDate: data.orderDate,
+        orderNo: data.orderNo,
+        groupName: data.groupName,
+        originalPrice: Number(data.originalPrice) || 0,
+        totalPrice: Number(data.totalPrice) || 0,
+        actualTransferOut: Number(data.actualTransferOut) || 0,
+        transferStatus: data.transferStatus as "已转" | "未转",
+        registerStatus: data.registerStatus,
+        settlementStatus: data.settlementStatus,
+      });
+      utils.orders.list.invalidate();
+      utils.orders.stats.invalidate();
+    } catch (error: any) {
+      const msg = error?.message || "保存失败";
+      if (Platform.OS === "web") alert(msg);
+      else Alert.alert("错误", msg);
+    } finally {
+      setSavingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  }, [editingRows, updateMutation, utils]);
+
+  // 保存所有修改
+  const saveAll = useCallback(async () => {
+    const ids = Object.keys(editingRows).map(Number);
+    for (const id of ids) {
+      await saveRow(id);
+    }
+    exitEditMode();
+    if (Platform.OS === "web") alert("全部保存成功");
+    else Alert.alert("成功", "全部保存成功");
+  }, [editingRows, saveRow, exitEditMode]);
+
   const handleDelete = useCallback(async (id: number) => {
     const doDelete = async () => {
       try {
         await deleteMutation.mutateAsync({ id });
-        setSelectedOrder(null);
         utils.orders.list.invalidate();
         utils.orders.stats.invalidate();
       } catch (error: any) {
@@ -83,7 +186,6 @@ export default function OrdersScreen() {
         else Alert.alert("错误", msg);
       }
     };
-
     if (Platform.OS === "web") {
       if (confirm("确定要删除这条订单吗？")) await doDelete();
     } else {
@@ -93,29 +195,6 @@ export default function OrdersScreen() {
       ]);
     }
   }, [deleteMutation, utils]);
-
-  const handleSaveEdit = useCallback(async () => {
-    if (!selectedOrder) return;
-    try {
-      await updateMutation.mutateAsync({
-        id: selectedOrder.id,
-        ...editData,
-        originalPrice: Number(editData.originalPrice) || 0,
-        totalPrice: Number(editData.totalPrice) || 0,
-        actualTransferOut: Number(editData.actualTransferOut) || 0,
-      });
-      setEditMode(false);
-      setSelectedOrder(null);
-      utils.orders.list.invalidate();
-      utils.orders.stats.invalidate();
-      if (Platform.OS === "web") alert("保存成功");
-      else Alert.alert("成功", "订单已更新");
-    } catch (error: any) {
-      const msg = error?.message || "保存失败";
-      if (Platform.OS === "web") alert(msg);
-      else Alert.alert("错误", msg);
-    }
-  }, [selectedOrder, editData, updateMutation, utils]);
 
   if (authLoading) {
     return (
@@ -129,356 +208,450 @@ export default function OrdersScreen() {
     return <LoginPrompt message="登录后即可查看加价结算数据" />;
   }
 
-  const renderOrderItem = ({ item }: { item: any }) => {
-    const calc = calcFields(item);
-    return (
-      <TouchableOpacity
-        onPress={() => {
-          setSelectedOrder(item);
-          setEditMode(false);
-          setEditData({
-            orderDate: item.orderDate || "",
-            orderNo: item.orderNo || "",
-            groupName: item.groupName,
-            originalPrice: String(Number(item.originalPrice) || 0),
-            totalPrice: String(Number(item.totalPrice) || 0),
-            actualTransferOut: String(Number(item.actualTransferOut) || 0),
-            transferStatus: item.transferStatus,
-            registerStatus: item.registerStatus || "",
-            settlementStatus: item.settlementStatus || "",
-          });
-        }}
-        className="bg-surface rounded-xl p-4 mb-3 border border-border active:opacity-70"
-      >
-        <View className="flex-row justify-between items-start mb-2">
-          <View className="flex-1 mr-3">
-            <Text className="text-base font-semibold text-foreground" numberOfLines={1}>
-              #{item.index} {item.groupName}
-            </Text>
-            {item.orderDate ? (
-              <Text className="text-xs text-muted mt-0.5">{item.orderDate}</Text>
-            ) : null}
-          </View>
-          <View
-            className={cn(
-              "px-2.5 py-1 rounded-full",
-              item.transferStatus === "已转" ? "bg-success/15" : "bg-error/15"
-            )}
+  // 获取单元格值（编辑模式 or 只读模式）
+  const getCellValue = (order: any, col: typeof COLUMNS[number]): string => {
+    const editData = editMode ? editingRows[order.id] : null;
+
+    if (col.key === "index") return `#${order.index}`;
+
+    // 计算字段
+    const source = editData || {
+      originalPrice: order.originalPrice,
+      totalPrice: order.totalPrice,
+      actualTransferOut: order.actualTransferOut,
+    };
+    const calc = calcFields(source as any);
+
+    switch (col.key) {
+      case "origIncome": return `¥${formatNum(calc.origIncome)}`;
+      case "markup": return `¥${formatNum(calc.markup)}`;
+      case "markupIncome": return `¥${formatNum(calc.markupIncome)}`;
+      case "markupActual": return `¥${formatNum(calc.markupActual)}`;
+      case "actualIncome": return `¥${formatNum(calc.actualIncome)}`;
+      default: break;
+    }
+
+    // 可编辑字段
+    if (editData) {
+      const val = editData[col.key as string];
+      if ((col as any).isNumber && val !== undefined) return val;
+      return val || "";
+    }
+
+    // 只读模式
+    switch (col.key) {
+      case "orderDate": return order.orderDate || "";
+      case "orderNo": return order.orderNo || "";
+      case "groupName": return order.groupName || "";
+      case "originalPrice": return `¥${formatNum(Number(order.originalPrice))}`;
+      case "totalPrice": return `¥${formatNum(Number(order.totalPrice))}`;
+      case "actualTransferOut": return `¥${formatNum(Number(order.actualTransferOut))}`;
+      case "transferStatus": return order.transferStatus;
+      case "registerStatus": return order.registerStatus || "—";
+      case "settlementStatus": return order.settlementStatus || "—";
+      default: return "";
+    }
+  };
+
+  const renderCell = (order: any, col: typeof COLUMNS[number], rowIdx: number) => {
+    const isEditing = editMode && (col as any).editable;
+    const editData = editingRows[order.id];
+
+    // 转账状态特殊处理
+    if (col.key === "transferStatus") {
+      const status = editData?.transferStatus || order.transferStatus;
+      const isTransferred = status === "已转";
+      if (isEditing) {
+        return (
+          <TouchableOpacity
+            key={col.key}
+            onPress={() => toggleTransferStatus(order.id)}
+            style={[styles.cell, { width: col.width, justifyContent: "center", alignItems: "center" }]}
           >
-            <Text
-              className={cn(
-                "text-xs font-medium",
-                item.transferStatus === "已转" ? "text-success" : "text-error"
-              )}
-            >
-              {item.transferStatus}
+            <View style={[
+              styles.statusBadge,
+              { backgroundColor: isTransferred ? "rgba(22,163,74,0.15)" : "rgba(220,38,38,0.15)" },
+            ]}>
+              <Text style={[
+                styles.statusText,
+                { color: isTransferred ? colors.success : colors.error },
+              ]}>
+                {status}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        );
+      }
+      return (
+        <View key={col.key} style={[styles.cell, { width: col.width, justifyContent: "center", alignItems: "center" }]}>
+          <View style={[
+            styles.statusBadge,
+            { backgroundColor: isTransferred ? "rgba(22,163,74,0.15)" : "rgba(220,38,38,0.15)" },
+          ]}>
+            <Text style={[
+              styles.statusText,
+              { color: isTransferred ? colors.success : colors.error },
+            ]}>
+              {status}
             </Text>
           </View>
         </View>
-        <View className={cn("flex-row flex-wrap gap-x-4 gap-y-1", isWide && "gap-x-6")}>
-          <MiniStat label="原价" value={`¥${formatNum(Number(item.originalPrice))}`} />
-          <MiniStat label="加价后总价" value={`¥${formatNum(Number(item.totalPrice))}`} />
-          <MiniStat label="加价" value={`¥${formatNum(calc.markup)}`} />
-          <MiniStat label="实际到手" value={`¥${formatNum(calc.actualIncome)}`} highlight />
+      );
+    }
+
+    // 可编辑字段 - 编辑模式
+    if (isEditing && editData) {
+      const val = editData[col.key as string] ?? "";
+      return (
+        <View key={col.key} style={[styles.cell, { width: col.width }]}>
+          <TextInput
+            style={[styles.cellInput, {
+              color: colors.foreground,
+              backgroundColor: colors.background,
+              borderColor: colors.primary,
+            }]}
+            value={val}
+            onChangeText={(v) => updateEditField(order.id, col.key as string, v)}
+            keyboardType={(col as any).isNumber ? "decimal-pad" : "default"}
+            returnKeyType="done"
+            placeholder="—"
+            placeholderTextColor={colors.muted}
+          />
         </View>
-      </TouchableOpacity>
+      );
+    }
+
+    // 只读单元格
+    const value = getCellValue(order, col);
+    const isCalc = (col as any).isCalc;
+    const isHighlight = (col as any).isHighlight;
+
+    return (
+      <View key={col.key} style={[styles.cell, { width: col.width }]}>
+        <Text
+          style={[
+            styles.cellText,
+            {
+              color: isHighlight ? colors.primary : isCalc ? colors.foreground : colors.foreground,
+              fontWeight: isHighlight ? "700" : isCalc ? "600" : "400",
+            },
+          ]}
+          numberOfLines={1}
+        >
+          {value}
+        </Text>
+      </View>
+    );
+  };
+
+  const renderRow = ({ item, index: rowIdx }: { item: any; index: number }) => {
+    const isEven = rowIdx % 2 === 0;
+    const isSaving = savingIds.has(item.id);
+    return (
+      <View style={[
+        styles.row,
+        {
+          backgroundColor: isEven ? colors.surface : colors.background,
+          borderBottomColor: colors.border,
+          minWidth: TOTAL_WIDTH + (editMode && isAdmin ? 100 : 0),
+        },
+      ]}>
+        {COLUMNS.map((col) => renderCell(item, col, rowIdx))}
+        {editMode && isAdmin && (
+          <View style={[styles.cell, { width: 100, flexDirection: "row", gap: 4, justifyContent: "center" }]}>
+            <TouchableOpacity
+              onPress={() => saveRow(item.id)}
+              disabled={isSaving}
+              style={[styles.actionBtn, { backgroundColor: colors.primary, opacity: isSaving ? 0.5 : 1 }]}
+            >
+              <Text style={styles.actionBtnText}>{isSaving ? "..." : "保存"}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => handleDelete(item.id)}
+              style={[styles.actionBtn, { backgroundColor: colors.error }]}
+            >
+              <Text style={styles.actionBtnText}>删除</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
     );
   };
 
   return (
     <ScreenContainer>
       {/* Header */}
-      <View className="px-5 pt-4 pb-2">
-        <Text className="text-2xl font-bold text-foreground">数据查看</Text>
-      </View>
-
-      {/* Stats bar */}
-      {stats && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-5 mb-3">
-          <View className="flex-row gap-3">
-            <StatCard label="总订单" value={String(stats.total)} color={colors.primary} />
-            <StatCard label="已转" value={String(stats.transferred)} color={colors.success} />
-            <StatCard label="未转" value={String(stats.pending)} color={colors.error} />
-            <StatCard label="总实际到手" value={`¥${formatNum(stats.totalIncome)}`} color={colors.primary} />
-          </View>
-        </ScrollView>
-      )}
-
-      {/* Filter + Search */}
-      <View className={cn("px-5 mb-3", isWide && "flex-row gap-4 items-center")}>
-        <View className="flex-row gap-2 mb-2">
-          {(["全部", "已转", "未转"] as FilterType[]).map((f) => (
-            <TouchableOpacity
-              key={f}
-              onPress={() => setFilter(f)}
-              className={cn(
-                "px-4 py-2 rounded-full border",
-                filter === f ? "bg-primary border-primary" : "bg-surface border-border"
-              )}
-            >
-              <Text
-                className={cn(
-                  "text-sm font-medium",
-                  filter === f ? "text-background" : "text-muted"
-                )}
-              >
-                {f}
+      <View style={styles.header}>
+        <View style={styles.headerTop}>
+          <View>
+            <Text style={[styles.title, { color: colors.foreground }]}>数据查看</Text>
+            {stats && (
+              <Text style={[styles.subtitle, { color: colors.muted }]}>
+                共 {stats.total} 条 · 已转 {stats.transferred} · 未转 {stats.pending} · 总到手 ¥{formatNum(stats.totalIncome)}
               </Text>
-            </TouchableOpacity>
-          ))}
+            )}
+          </View>
+          <View style={styles.headerActions}>
+            {isAdmin && (
+              editMode ? (
+                <View style={styles.editActions}>
+                  <TouchableOpacity
+                    onPress={saveAll}
+                    style={[styles.headerBtn, { backgroundColor: colors.success }]}
+                  >
+                    <Text style={styles.headerBtnText}>全部保存</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={exitEditMode}
+                    style={[styles.headerBtn, { backgroundColor: colors.muted }]}
+                  >
+                    <Text style={styles.headerBtnText}>取消</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  onPress={enterEditMode}
+                  style={[styles.headerBtn, { backgroundColor: colors.primary }]}
+                >
+                  <Text style={styles.headerBtnText}>编辑模式</Text>
+                </TouchableOpacity>
+              )
+            )}
+          </View>
         </View>
-        <View className={cn("flex-1", !isWide && "mb-0")}>
+
+        {/* Filter + Search */}
+        <View style={styles.filterRow}>
+          <View style={styles.filterBtns}>
+            {(["全部", "已转", "未转"] as FilterType[]).map((f) => (
+              <TouchableOpacity
+                key={f}
+                onPress={() => setFilter(f)}
+                style={[
+                  styles.filterBtn,
+                  {
+                    backgroundColor: filter === f ? colors.primary : colors.surface,
+                    borderColor: filter === f ? colors.primary : colors.border,
+                  },
+                ]}
+              >
+                <Text style={[
+                  styles.filterBtnText,
+                  { color: filter === f ? "#fff" : colors.muted },
+                ]}>
+                  {f}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
           <TextInput
-            className="bg-surface border border-border rounded-xl px-3.5 py-2.5 text-foreground text-sm"
+            style={[styles.searchInput, {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+              color: colors.foreground,
+            }]}
             placeholder="搜索群名..."
             placeholderTextColor={colors.muted}
             value={search}
             onChangeText={setSearch}
             returnKeyType="search"
-            style={{ lineHeight: 20 }}
           />
         </View>
       </View>
 
-      {/* Order list */}
+      {/* Table */}
       {isLoading ? (
-        <View className="flex-1 items-center justify-center">
+        <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
-        <FlatList
-          data={orders || []}
-          keyExtractor={(item) => String(item.id)}
-          renderItem={renderOrderItem}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
-          refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} tintColor={colors.primary} />
-          }
-          ListEmptyComponent={
-            <View className="items-center py-16">
-              <Text className="text-muted text-base">暂无订单数据</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={true} style={styles.tableScroll}>
+          <View style={styles.tableContainer}>
+            {/* Table Header */}
+            <View style={[
+              styles.tableHeader,
+              {
+                backgroundColor: colors.primary,
+                minWidth: TOTAL_WIDTH + (editMode && isAdmin ? 100 : 0),
+              },
+            ]}>
+              {COLUMNS.map((col) => (
+                <View key={col.key} style={[styles.headerCell, { width: col.width }]}>
+                  <Text style={styles.headerCellText} numberOfLines={1}>{col.label}</Text>
+                </View>
+              ))}
+              {editMode && isAdmin && (
+                <View style={[styles.headerCell, { width: 100 }]}>
+                  <Text style={styles.headerCellText}>操作</Text>
+                </View>
+              )}
             </View>
-          }
-        />
+
+            {/* Table Body */}
+            <FlatList
+              data={orders || []}
+              keyExtractor={(item) => String(item.id)}
+              renderItem={renderRow}
+              refreshControl={
+                <RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} tintColor={colors.primary} />
+              }
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  <Text style={[styles.emptyText, { color: colors.muted }]}>暂无订单数据</Text>
+                </View>
+              }
+              contentContainerStyle={{ paddingBottom: 20 }}
+            />
+          </View>
+        </ScrollView>
       )}
-
-      {/* Detail Modal */}
-      <Modal
-        visible={!!selectedOrder}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => { setSelectedOrder(null); setEditMode(false); }}
-      >
-        <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
-          <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === "ios" ? "padding" : undefined}>
-            {/* Modal header */}
-            <View className="flex-row justify-between items-center px-5 py-3 border-b border-border">
-              <TouchableOpacity onPress={() => { setSelectedOrder(null); setEditMode(false); }}>
-                <Text className="text-primary text-base">关闭</Text>
-              </TouchableOpacity>
-              <Text className="text-base font-semibold text-foreground">
-                {editMode ? "编辑订单" : "订单详情"}
-              </Text>
-              {isAdmin ? (
-                editMode ? (
-                  <TouchableOpacity onPress={handleSaveEdit}>
-                    <Text className="text-primary text-base font-semibold">保存</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity onPress={() => setEditMode(true)}>
-                    <Text className="text-primary text-base">编辑</Text>
-                  </TouchableOpacity>
-                )
-              ) : (
-                <View style={{ width: 40 }} />
-              )}
-            </View>
-
-            <ScrollView className="flex-1 px-5 pt-4" contentContainerStyle={{ paddingBottom: 40 }}>
-              {selectedOrder && !editMode && (
-                <OrderDetailView order={selectedOrder} isAdmin={isAdmin} onDelete={handleDelete} />
-              )}
-              {selectedOrder && editMode && (
-                <OrderEditForm data={editData} onChange={setEditData} />
-              )}
-            </ScrollView>
-          </KeyboardAvoidingView>
-        </View>
-      </Modal>
     </ScreenContainer>
   );
 }
 
-function MiniStat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
-  return (
-    <View>
-      <Text className="text-xs text-muted">{label}</Text>
-      <Text className={cn("text-sm font-semibold", highlight ? "text-primary" : "text-foreground")}>
-        {value}
-      </Text>
-    </View>
-  );
-}
-
-function StatCard({ label, value, color }: { label: string; value: string; color: string }) {
-  return (
-    <View className="bg-surface rounded-xl px-4 py-3 border border-border min-w-[100px]">
-      <Text className="text-xs text-muted mb-1">{label}</Text>
-      <Text className="text-base font-bold" style={{ color }}>{value}</Text>
-    </View>
-  );
-}
-
-function OrderDetailView({ order, isAdmin, onDelete }: { order: any; isAdmin: boolean; onDelete: (id: number) => void }) {
-  const calc = calcFields(order);
-  return (
-    <View className="gap-4">
-      <View className="bg-surface rounded-2xl p-4 border border-border">
-        <Text className="text-base font-semibold text-foreground mb-3">基本信息</Text>
-        <DetailRow label="序号" value={`#${order.index}`} />
-        <DetailRow label="接单日期" value={order.orderDate || "—"} />
-        <DetailRow label="单号" value={order.orderNo || "—"} />
-        <DetailRow label="群名" value={order.groupName} />
-        <DetailRow label="转账状态" value={order.transferStatus} isTag tagType={order.transferStatus} />
-        <DetailRow label="登记状态" value={order.registerStatus || "—"} />
-        <DetailRow label="结算状态" value={order.settlementStatus || "—"} />
-      </View>
-
-      <View className="bg-surface rounded-2xl p-4 border border-border">
-        <Text className="text-base font-semibold text-foreground mb-3">金额明细</Text>
-        <DetailRow label="原价" value={`¥${formatNum(Number(order.originalPrice))}`} />
-        <DetailRow label="加价后总价" value={`¥${formatNum(Number(order.totalPrice))}`} />
-        <DetailRow label="加价" value={`¥${formatNum(calc.markup)}`} />
-        <DetailRow label="原价应到手" value={`¥${formatNum(calc.origIncome)}`} />
-        <DetailRow label="加价应到手" value={`¥${formatNum(calc.markupIncome)}`} />
-        <DetailRow label="实际转出" value={`¥${formatNum(Number(order.actualTransferOut))}`} />
-        <DetailRow label="加价实际到手" value={`¥${formatNum(calc.markupActual)}`} />
-        <View className="border-t border-border pt-2 mt-1">
-          <DetailRow label="实际到手" value={`¥${formatNum(calc.actualIncome)}`} highlight />
-        </View>
-      </View>
-
-      {isAdmin && (
-        <TouchableOpacity
-          className="bg-error/10 border border-error/30 py-3.5 rounded-xl items-center mt-2 active:opacity-70"
-          onPress={() => onDelete(order.id)}
-        >
-          <Text className="text-error font-semibold">删除订单</Text>
-        </TouchableOpacity>
-      )}
-    </View>
-  );
-}
-
-function DetailRow({ label, value, highlight, isTag, tagType }: {
-  label: string;
-  value: string;
-  highlight?: boolean;
-  isTag?: boolean;
-  tagType?: string;
-}) {
-  return (
-    <View className="flex-row justify-between items-center py-1.5">
-      <Text className="text-sm text-muted">{label}</Text>
-      {isTag ? (
-        <View className={cn("px-2.5 py-0.5 rounded-full", tagType === "已转" ? "bg-success/15" : "bg-error/15")}>
-          <Text className={cn("text-sm font-medium", tagType === "已转" ? "text-success" : "text-error")}>
-            {value}
-          </Text>
-        </View>
-      ) : (
-        <Text className={cn("text-sm font-semibold", highlight ? "text-primary text-base" : "text-foreground")}>
-          {value}
-        </Text>
-      )}
-    </View>
-  );
-}
-
-function OrderEditForm({ data, onChange }: { data: any; onChange: (d: any) => void }) {
-  const colors = useColors();
-  const update = (key: string, val: string) => onChange({ ...data, [key]: val });
-
-  const origPrice = parseFloat(data.originalPrice) || 0;
-  const totPrice = parseFloat(data.totalPrice) || 0;
-  const actTransOut = parseFloat(data.actualTransferOut) || 0;
-  const markup = totPrice - origPrice;
-  const origIncome = origPrice * 0.4;
-  const markupIncome = markup * 0.4;
-  const markupActual = markupIncome - actTransOut;
-  const actualIncome = origIncome + markupActual;
-
-  return (
-    <View className="gap-4">
-      <View className="bg-surface rounded-2xl p-4 border border-border">
-        <Text className="text-base font-semibold text-foreground mb-3">编辑信息</Text>
-        <EditField label="接单日期" value={data.orderDate} onChangeText={(v: string) => update("orderDate", v)} colors={colors} />
-        <EditField label="单号" value={data.orderNo} onChangeText={(v: string) => update("orderNo", v)} colors={colors} />
-        <EditField label="群名" value={data.groupName} onChangeText={(v: string) => update("groupName", v)} colors={colors} />
-        <EditField label="原价" value={data.originalPrice} onChangeText={(v: string) => update("originalPrice", v)} keyboardType="decimal-pad" colors={colors} />
-        <EditField label="加价后总价" value={data.totalPrice} onChangeText={(v: string) => update("totalPrice", v)} keyboardType="decimal-pad" colors={colors} />
-        <EditField label="实际转出" value={data.actualTransferOut} onChangeText={(v: string) => update("actualTransferOut", v)} keyboardType="decimal-pad" colors={colors} />
-
-        <View className="mb-3">
-          <Text className="text-sm text-muted mb-1.5">转账状态</Text>
-          <View className="flex-row gap-3">
-            {(["未转", "已转"] as const).map((s) => (
-              <TouchableOpacity
-                key={s}
-                onPress={() => onChange({ ...data, transferStatus: s })}
-                className={cn(
-                  "flex-1 py-2.5 rounded-xl items-center border",
-                  data.transferStatus === s
-                    ? s === "已转" ? "bg-success/15 border-success" : "bg-error/15 border-error"
-                    : "bg-background border-border"
-                )}
-                style={data.transferStatus === s ? { opacity: 1 } : { opacity: 0.6 }}
-              >
-                <Text className={cn("font-medium text-sm", data.transferStatus === s ? (s === "已转" ? "text-success" : "text-error") : "text-muted")}>
-                  {s}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        <EditField label="登记状态" value={data.registerStatus} onChangeText={(v: string) => update("registerStatus", v)} colors={colors} />
-        <EditField label="结算状态" value={data.settlementStatus} onChangeText={(v: string) => update("settlementStatus", v)} colors={colors} />
-      </View>
-
-      <View className="bg-surface rounded-2xl p-4 border border-border">
-        <Text className="text-base font-semibold text-foreground mb-3">自动计算</Text>
-        <DetailRow label="加价" value={`¥${formatNum(markup)}`} />
-        <DetailRow label="原价应到手" value={`¥${formatNum(origIncome)}`} />
-        <DetailRow label="加价应到手" value={`¥${formatNum(markupIncome)}`} />
-        <DetailRow label="加价实际到手" value={`¥${formatNum(markupActual)}`} />
-        <View className="border-t border-border pt-2 mt-1">
-          <DetailRow label="实际到手" value={`¥${formatNum(actualIncome)}`} highlight />
-        </View>
-      </View>
-    </View>
-  );
-}
-
-function EditField({ label, value, onChangeText, keyboardType, colors }: {
-  label: string;
-  value: string;
-  onChangeText: (v: string) => void;
-  keyboardType?: "default" | "decimal-pad";
-  colors: any;
-}) {
-  return (
-    <View className="mb-3">
-      <Text className="text-sm text-muted mb-1.5">{label}</Text>
-      <TextInput
-        className="bg-background border border-border rounded-xl px-3.5 py-2.5 text-foreground text-sm"
-        value={value}
-        onChangeText={onChangeText}
-        keyboardType={keyboardType}
-        placeholderTextColor={colors.muted}
-        returnKeyType="done"
-        style={{ lineHeight: 20 }}
-      />
-    </View>
-  );
-}
+const styles = StyleSheet.create({
+  header: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  headerTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 10,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: "700",
+  },
+  subtitle: {
+    fontSize: 13,
+    marginTop: 4,
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  editActions: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  headerBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  headerBtnText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  filterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 4,
+  },
+  filterBtns: {
+    flexDirection: "row",
+    gap: 6,
+  },
+  filterBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  filterBtnText: {
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  searchInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    fontSize: 13,
+    minWidth: 120,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  tableScroll: {
+    flex: 1,
+  },
+  tableContainer: {
+    flex: 1,
+  },
+  tableHeader: {
+    flexDirection: "row",
+    borderBottomWidth: 2,
+    borderBottomColor: "rgba(255,255,255,0.3)",
+  },
+  headerCell: {
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  headerCellText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  row: {
+    flexDirection: "row",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    minHeight: 44,
+    alignItems: "center",
+  },
+  cell: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    justifyContent: "center",
+  },
+  cellText: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  cellInput: {
+    fontSize: 13,
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    lineHeight: 18,
+    minHeight: 30,
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  actionBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  actionBtnText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  emptyContainer: {
+    paddingVertical: 60,
+    alignItems: "center",
+  },
+  emptyText: {
+    fontSize: 14,
+  },
+});
