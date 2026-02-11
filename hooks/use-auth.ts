@@ -32,6 +32,7 @@ export function useAuth(options?: UseAuthOptions) {
             name: apiUser.name,
             email: apiUser.email,
             loginMethod: apiUser.loginMethod,
+            role: (apiUser as any).role || "user",
             lastSignedIn: new Date(apiUser.lastSignedIn),
           };
           setUser(userInfo);
