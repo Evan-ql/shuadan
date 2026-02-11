@@ -46,9 +46,9 @@ COPY --from=builder /app/drizzle ./drizzle
 
 # 环境变量
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV PORT=9091
 
-EXPOSE 3000
+EXPOSE 9091
 
 # 启动服务
 CMD ["node", "dist/index.js"]
