@@ -1,122 +1,143 @@
-import { z } from "zod";
-import { COOKIE_NAME } from "../shared/const.js";
+import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, protectedProcedure, adminProcedure, router } from "./_core/trpc";
-import * as db from "./db";
+import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { z } from "zod";
+import { TRPCError } from "@trpc/server";
+import { sdk } from "./_core/sdk";
+import { ONE_YEAR_MS } from "@shared/const";
+import {
+  createSettlement,
+  listSettlements,
+  updateSettlement,
+  deleteSettlement,
+  getSettlementById,
+  getDistinctStatuses,
+  upsertUser,
+  getUserByOpenId,
+} from "./db";
+
+const HARDCODED_USERNAME = "Evan";
+const HARDCODED_PASSWORD = "jiao662532";
+
+const settlementInput = z.object({
+  orderDate: z.number().nullable().optional(),
+  orderNo: z.string().optional().default(""),
+  groupName: z.string().optional().default(""),
+  customerService: z.string().optional().default(""),
+  originalPrice: z.string().optional().default("0"),
+  totalPrice: z.string().optional().default("0"),
+  actualTransfer: z.string().optional().default("0"),
+  transferStatus: z.string().optional().default(""),
+  registrationStatus: z.string().optional().default(""),
+  settlementStatus: z.string().optional().default(""),
+  remark: z.string().optional().default(""),
+});
 
 export const appRouter = router({
   system: systemRouter,
   auth: router({
-    me: publicProcedure.query((opts) => opts.ctx.user),
+    me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
+    login: publicProcedure
+      .input(
+        z.object({
+          username: z.string(),
+          password: z.string(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        if (input.username !== HARDCODED_USERNAME || input.password !== HARDCODED_PASSWORD) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "用户名或密码错误",
+          });
+        }
+
+        // Use a fixed openId for this hardcoded user
+        const openId = `local_user_${HARDCODED_USERNAME}`;
+
+        // Upsert user in database
+        await upsertUser({
+          openId,
+          name: HARDCODED_USERNAME,
+          email: null,
+          loginMethod: "password",
+          lastSignedIn: new Date(),
+        });
+
+        // Create session token
+        const sessionToken = await sdk.createSessionToken(openId, {
+          name: HARDCODED_USERNAME,
+          expiresInMs: ONE_YEAR_MS,
+        });
+
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(COOKIE_NAME, sessionToken, {
+          ...cookieOptions,
+          maxAge: ONE_YEAR_MS,
+        });
+
+        const user = await getUserByOpenId(openId);
+        return user;
+      }),
   }),
 
-  // ========== 订单路由 ==========
-  orders: router({
-    /** 获取订单列表（公开，但需要登录） */
-    list: protectedProcedure
-      .input(z.object({
-        transferStatus: z.enum(["已转", "未转"]).optional(),
-        search: z.string().optional(),
-      }).optional())
-      .query(async ({ input }) => {
-        return db.getOrders(input ?? undefined);
+  settlement: router({
+    create: protectedProcedure
+      .input(settlementInput)
+      .mutation(async ({ input, ctx }) => {
+        return createSettlement({
+          ...input,
+          createdBy: ctx.user.id,
+        });
       }),
 
-    /** 获取单个订单 */
+    list: protectedProcedure
+      .input(
+        z.object({
+          page: z.number().min(1).default(1),
+          pageSize: z.number().min(1).max(100).default(20),
+          search: z.string().optional(),
+          transferStatus: z.string().optional(),
+          registrationStatus: z.string().optional(),
+          settlementStatus: z.string().optional(),
+        })
+      )
+      .query(async ({ input }) => {
+        return listSettlements(input);
+      }),
+
     getById: protectedProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input }) => {
-        return db.getOrderById(input.id);
+        return getSettlementById(input.id);
       }),
 
-    /** 获取统计数据 */
-    stats: protectedProcedure.query(async () => {
-      return db.getOrderStats();
-    }),
-
-    /** 创建订单（仅admin） */
-    create: adminProcedure
-      .input(z.object({
-        orderDate: z.string().optional().default(""),
-        orderNo: z.string().optional().default(""),
-        groupName: z.string().min(1, "群名不能为空"),
-        originalPrice: z.string().or(z.number()).transform(v => String(v)),
-        totalPrice: z.string().or(z.number()).transform(v => String(v)),
-        actualTransferOut: z.string().or(z.number()).transform(v => String(v)),
-        transferStatus: z.enum(["已转", "未转"]).default("未转"),
-        registerStatus: z.string().optional().default(""),
-        settlementStatus: z.string().optional().default(""),
-      }))
-      .mutation(async ({ ctx, input }) => {
-        const nextIdx = await db.getNextIndex();
-        const id = await db.createOrder({
-          index: nextIdx,
-          orderDate: input.orderDate,
-          orderNo: input.orderNo,
-          groupName: input.groupName,
-          originalPrice: input.originalPrice,
-          totalPrice: input.totalPrice,
-          actualTransferOut: input.actualTransferOut,
-          transferStatus: input.transferStatus,
-          registerStatus: input.registerStatus,
-          settlementStatus: input.settlementStatus,
-          createdBy: ctx.user.id,
-        });
-        return { id, index: nextIdx };
-      }),
-
-    /** 更新订单（仅admin） */
-    update: adminProcedure
-      .input(z.object({
-        id: z.number(),
-        orderDate: z.string().optional(),
-        orderNo: z.string().optional(),
-        groupName: z.string().min(1).optional(),
-        originalPrice: z.string().or(z.number()).transform(v => String(v)).optional(),
-        totalPrice: z.string().or(z.number()).transform(v => String(v)).optional(),
-        actualTransferOut: z.string().or(z.number()).transform(v => String(v)).optional(),
-        transferStatus: z.enum(["已转", "未转"]).optional(),
-        registerStatus: z.string().optional(),
-        settlementStatus: z.string().optional(),
-      }))
+    update: protectedProcedure
+      .input(
+        z.object({
+          id: z.number(),
+          data: settlementInput.partial(),
+        })
+      )
       .mutation(async ({ input }) => {
-        const { id, ...data } = input;
-        await db.updateOrder(id, data);
-        return { success: true };
+        return updateSettlement(input.id, input.data);
       }),
 
-    /** 删除订单（仅admin） */
-    delete: adminProcedure
+    delete: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
-        await db.deleteOrder(input.id);
-        return { success: true };
+        return deleteSettlement(input.id);
       }),
-  }),
 
-  // ========== 用户管理路由（仅admin） ==========
-  users: router({
-    /** 获取所有用户 */
-    list: adminProcedure.query(async () => {
-      return db.getAllUsers();
+    statuses: protectedProcedure.query(async () => {
+      return getDistinctStatuses();
     }),
-
-    /** 更新用户角色 */
-    updateRole: adminProcedure
-      .input(z.object({
-        userId: z.number(),
-        role: z.enum(["user", "admin"]),
-      }))
-      .mutation(async ({ input }) => {
-        await db.updateUserRole(input.userId, input.role);
-        return { success: true };
-      }),
   }),
 });
 

@@ -1,9 +1,0 @@
-{
-  "query": "CREATE TABLE `orders` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`idx` int NOT NULL,\n\t`orderDate` varchar(64),\n\t`orderNo` varchar(64),\n\t`groupName` varchar(255) NOT NULL,\n\t`originalPrice` decimal(12,2) NOT NULL DEFAULT '0',\n\t`totalPrice` decimal(12,2) NOT NULL DEFAULT '0',\n\t`actualTransferOut` decimal(12,2) NOT NULL DEFAULT '0',\n\t`transferStatus` enum('已转','未转') NOT NULL DEFAULT '未转',\n\t`registerStatus` varchar(64),\n\t`settlementStatus` varchar(64),\n\t`createdBy` int,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `orders_id` PRIMARY KEY(`id`)\n);",
-  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 27KfnAvo8HyD8dQ.root --database 9g7evWJsikVEucvfXRD4v8 --execute CREATE TABLE `orders` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`idx` int NOT NULL,\n\t`orderDate` varchar(64),\n\t`orderNo` varchar(64),\n\t`groupName` varchar(255) NOT NULL,\n\t`originalPrice` decimal(12,2) NOT NULL DEFAULT '0',\n\t`totalPrice` decimal(12,2) NOT NULL DEFAULT '0',\n\t`actualTransferOut` decimal(12,2) NOT NULL DEFAULT '0',\n\t`transferStatus` enum('已转','未转') NOT NULL DEFAULT '未转',\n\t`registerStatus` varchar(64),\n\t`settlementStatus` varchar(64),\n\t`createdBy` int,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `orders_id` PRIMARY KEY(`id`)\n);",
-  "rows": [],
-  "messages": [],
-  "stdout": "",
-  "stderr": "",
-  "execution_time_ms": 2168
-}

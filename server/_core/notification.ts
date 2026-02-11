@@ -14,8 +14,13 @@ const isNonEmptyString = (value: unknown): value is string =>
   typeof value === "string" && value.trim().length > 0;
 
 const buildEndpointUrl = (baseUrl: string): string => {
-  const normalizedBase = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
-  return new URL("webdevtoken.v1.WebDevService/SendNotification", normalizedBase).toString();
+  const normalizedBase = baseUrl.endsWith("/")
+    ? baseUrl
+    : `${baseUrl}/`;
+  return new URL(
+    "webdevtoken.v1.WebDevService/SendNotification",
+    normalizedBase
+  ).toString();
 };
 
 const validatePayload = (input: NotificationPayload): NotificationPayload => {
@@ -58,7 +63,9 @@ const validatePayload = (input: NotificationPayload): NotificationPayload => {
  * cannot be reached (callers can fall back to email/slack). Validation errors
  * bubble up as TRPC errors so callers can fix the payload.
  */
-export async function notifyOwner(payload: NotificationPayload): Promise<boolean> {
+export async function notifyOwner(
+  payload: NotificationPayload
+): Promise<boolean> {
   const { title, content } = validatePayload(payload);
 
   if (!ENV.forgeApiUrl) {
@@ -94,7 +101,7 @@ export async function notifyOwner(payload: NotificationPayload): Promise<boolean
       console.warn(
         `[Notification] Failed to notify owner (${response.status} ${response.statusText})${
           detail ? `: ${detail}` : ""
-        }`,
+        }`
       );
       return false;
     }

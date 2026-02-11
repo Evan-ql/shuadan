@@ -1,0 +1,1 @@
+ALTER TABLE `settlements` ADD `customerService` varchar(64) DEFAULT '';

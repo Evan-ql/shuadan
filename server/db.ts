@@ -1,7 +1,7 @@
-import { and, desc, eq, like, sql } from "drizzle-orm";
+import { eq, like, and, desc, sql, SQL } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, orders, InsertOrder } from "../drizzle/schema";
-import { ENV } from "./_core/env";
+import { InsertUser, users, settlements, InsertSettlement, Settlement } from "../drizzle/schema";
+import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -17,21 +17,26 @@ export async function getDb() {
   return _db;
 }
 
-// ========== User functions ==========
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) {
     throw new Error("User openId is required for upsert");
   }
+
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot upsert user: database not available");
     return;
   }
+
   try {
-    const values: InsertUser = { openId: user.openId };
+    const values: InsertUser = {
+      openId: user.openId,
+    };
     const updateSet: Record<string, unknown> = {};
+
     const textFields = ["name", "email", "loginMethod"] as const;
     type TextField = (typeof textFields)[number];
+
     const assignNullable = (field: TextField) => {
       const value = user[field];
       if (value === undefined) return;
@@ -39,7 +44,9 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       values[field] = normalized;
       updateSet[field] = normalized;
     };
+
     textFields.forEach(assignNullable);
+
     if (user.lastSignedIn !== undefined) {
       values.lastSignedIn = user.lastSignedIn;
       updateSet.lastSignedIn = user.lastSignedIn;
@@ -48,16 +55,21 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       values.role = user.role;
       updateSet.role = user.role;
     } else if (user.openId === ENV.ownerOpenId) {
-      values.role = "admin";
-      updateSet.role = "admin";
+      values.role = 'admin';
+      updateSet.role = 'admin';
     }
+
     if (!values.lastSignedIn) {
       values.lastSignedIn = new Date();
     }
+
     if (Object.keys(updateSet).length === 0) {
       updateSet.lastSignedIn = new Date();
     }
-    await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
+
+    await db.insert(users).values(values).onDuplicateKeyUpdate({
+      set: updateSet,
+    });
   } catch (error) {
     console.error("[Database] Failed to upsert user:", error);
     throw error;
@@ -66,113 +78,119 @@ export async function upsertUser(user: InsertUser): Promise<void> {
 
 export async function getUserByOpenId(openId: string) {
   const db = await getDb();
-  if (!db) return undefined;
+  if (!db) {
+    console.warn("[Database] Cannot get user: database not available");
+    return undefined;
+  }
+
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
+
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function getAllUsers() {
-  const db = await getDb();
-  if (!db) return [];
-  return db.select({
-    id: users.id,
-    openId: users.openId,
-    name: users.name,
-    email: users.email,
-    role: users.role,
-    lastSignedIn: users.lastSignedIn,
-    createdAt: users.createdAt,
-  }).from(users).orderBy(desc(users.createdAt));
-}
+// ==================== Settlement CRUD ====================
 
-export async function updateUserRole(userId: number, role: "user" | "admin") {
+export async function createSettlement(data: InsertSettlement) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.update(users).set({ role }).where(eq(users.id, userId));
+
+  const result = await db.insert(settlements).values(data);
+  const insertId = result[0].insertId;
+  return getSettlementById(insertId);
 }
 
-// ========== Order functions ==========
-export async function getOrders(filters?: {
-  transferStatus?: "已转" | "未转";
+export async function getSettlementById(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db.select().from(settlements).where(eq(settlements.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function listSettlements(params: {
+  page: number;
+  pageSize: number;
   search?: string;
+  transferStatus?: string;
+  registrationStatus?: string;
+  settlementStatus?: string;
 }) {
   const db = await getDb();
-  if (!db) return [];
-
-  const conditions = [];
-  if (filters?.transferStatus) {
-    conditions.push(eq(orders.transferStatus, filters.transferStatus));
-  }
-  if (filters?.search) {
-    conditions.push(like(orders.groupName, `%${filters.search}%`));
-  }
-
-  const where = conditions.length > 0 ? and(...conditions) : undefined;
-  return db.select().from(orders).where(where).orderBy(desc(orders.index));
-}
-
-export async function getOrderById(id: number) {
-  const db = await getDb();
-  if (!db) return undefined;
-  const result = await db.select().from(orders).where(eq(orders.id, id)).limit(1);
-  return result.length > 0 ? result[0] : undefined;
-}
-
-export async function getNextIndex() {
-  const db = await getDb();
-  if (!db) return 1;
-  const result = await db.select({ maxIdx: sql<number>`COALESCE(MAX(${orders.index}), 0)` }).from(orders);
-  return (result[0]?.maxIdx ?? 0) + 1;
-}
-
-export async function createOrder(data: Omit<InsertOrder, "id" | "createdAt" | "updatedAt">) {
-  const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(orders).values(data);
-  return result[0].insertId;
-}
 
-export async function updateOrder(id: number, data: Partial<Omit<InsertOrder, "id" | "createdAt" | "updatedAt">>) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  await db.update(orders).set(data).where(eq(orders.id, id));
-}
+  const conditions: SQL[] = [];
 
-export async function deleteOrder(id: number) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  await db.delete(orders).where(eq(orders.id, id));
-}
-
-export async function getOrderStats() {
-  const db = await getDb();
-  if (!db) return { total: 0, transferred: 0, pending: 0, totalIncome: 0 };
-
-  const allOrders = await db.select().from(orders);
-
-  let total = allOrders.length;
-  let transferred = 0;
-  let pending = 0;
-  let totalActualIncome = 0;
-
-  for (const o of allOrders) {
-    const origPrice = Number(o.originalPrice);
-    const totPrice = Number(o.totalPrice);
-    const actualOut = Number(o.actualTransferOut);
-    const markup = totPrice - origPrice;
-    const origIncome = origPrice * 0.4;
-    const markupIncome = markup * 0.4;
-    const markupActual = markupIncome - actualOut;
-    const actualIncome = origIncome + markupActual;
-
-    totalActualIncome += actualIncome;
-
-    if (o.transferStatus === "已转") {
-      transferred++;
-    } else {
-      pending++;
-    }
+  if (params.search) {
+    const searchPattern = `%${params.search}%`;
+    conditions.push(
+      sql`(${settlements.groupName} LIKE ${searchPattern} OR ${settlements.orderNo} LIKE ${searchPattern})`
+    );
   }
 
-  return { total, transferred, pending, totalIncome: Math.round(totalActualIncome * 100) / 100 };
+  if (params.transferStatus) {
+    conditions.push(eq(settlements.transferStatus, params.transferStatus));
+  }
+  if (params.registrationStatus) {
+    conditions.push(eq(settlements.registrationStatus, params.registrationStatus));
+  }
+  if (params.settlementStatus) {
+    conditions.push(eq(settlements.settlementStatus, params.settlementStatus));
+  }
+
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const [items, countResult] = await Promise.all([
+    db
+      .select()
+      .from(settlements)
+      .where(whereClause)
+      .orderBy(desc(settlements.id))
+      .limit(params.pageSize)
+      .offset((params.page - 1) * params.pageSize),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(settlements)
+      .where(whereClause),
+  ]);
+
+  return {
+    items,
+    total: Number(countResult[0].count),
+    page: params.page,
+    pageSize: params.pageSize,
+    totalPages: Math.ceil(Number(countResult[0].count) / params.pageSize),
+  };
+}
+
+export async function updateSettlement(id: number, data: Partial<InsertSettlement>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.update(settlements).set(data).where(eq(settlements.id, id));
+  return getSettlementById(id);
+}
+
+export async function deleteSettlement(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.delete(settlements).where(eq(settlements.id, id));
+  return { success: true };
+}
+
+export async function getDistinctStatuses() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const [transferStatuses, registrationStatuses, settlementStatuses] = await Promise.all([
+    db.selectDistinct({ value: settlements.transferStatus }).from(settlements).where(sql`${settlements.transferStatus} != ''`),
+    db.selectDistinct({ value: settlements.registrationStatus }).from(settlements).where(sql`${settlements.registrationStatus} != ''`),
+    db.selectDistinct({ value: settlements.settlementStatus }).from(settlements).where(sql`${settlements.settlementStatus} != ''`),
+  ]);
+
+  return {
+    transferStatuses: transferStatuses.map(r => r.value).filter(Boolean) as string[],
+    registrationStatuses: registrationStatuses.map(r => r.value).filter(Boolean) as string[],
+    settlementStatuses: settlementStatuses.map(r => r.value).filter(Boolean) as string[],
+  };
 }

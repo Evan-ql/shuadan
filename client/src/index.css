@@ -1,0 +1,235 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --font-sans: "Inter", "Noto Sans SC", system-ui, sans-serif;
+  --font-heading: "Orbitron", "Inter", sans-serif;
+}
+
+/* Blueprint dark theme - Royal Blue */
+:root {
+  --radius: 0.375rem;
+  /* Deep royal blue background */
+  --background: oklch(0.18 0.06 260);
+  --foreground: oklch(0.95 0.01 240);
+  /* Card: slightly lighter blue */
+  --card: oklch(0.22 0.055 258);
+  --card-foreground: oklch(0.95 0.01 240);
+  /* Popover */
+  --popover: oklch(0.20 0.058 259);
+  --popover-foreground: oklch(0.95 0.01 240);
+  /* Primary: bright cyan-blue accent */
+  --primary: oklch(0.75 0.15 220);
+  --primary-foreground: oklch(0.15 0.05 260);
+  /* Secondary */
+  --secondary: oklch(0.25 0.05 258);
+  --secondary-foreground: oklch(0.88 0.03 220);
+  /* Muted */
+  --muted: oklch(0.24 0.04 260);
+  --muted-foreground: oklch(0.65 0.04 240);
+  /* Accent */
+  --accent: oklch(0.28 0.06 255);
+  --accent-foreground: oklch(0.95 0.01 240);
+  /* Destructive */
+  --destructive: oklch(0.65 0.2 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  /* Border: subtle grid lines */
+  --border: oklch(0.35 0.06 250 / 50%);
+  --input: oklch(0.30 0.05 258);
+  --ring: oklch(0.70 0.15 220);
+  /* Charts */
+  --chart-1: oklch(0.75 0.15 220);
+  --chart-2: oklch(0.65 0.12 200);
+  --chart-3: oklch(0.55 0.10 240);
+  --chart-4: oklch(0.70 0.18 180);
+  --chart-5: oklch(0.60 0.08 260);
+  /* Sidebar: darker blue */
+  --sidebar: oklch(0.15 0.065 262);
+  --sidebar-foreground: oklch(0.90 0.02 240);
+  --sidebar-primary: oklch(0.75 0.15 220);
+  --sidebar-primary-foreground: oklch(0.15 0.05 260);
+  --sidebar-accent: oklch(0.22 0.06 258);
+  --sidebar-accent-foreground: oklch(0.95 0.01 240);
+  --sidebar-border: oklch(0.35 0.06 250 / 40%);
+  --sidebar-ring: oklch(0.70 0.15 220);
+}
+
+/* Also define .dark for ThemeProvider compatibility */
+.dark {
+  --radius: 0.375rem;
+  --background: oklch(0.18 0.06 260);
+  --foreground: oklch(0.95 0.01 240);
+  --card: oklch(0.22 0.055 258);
+  --card-foreground: oklch(0.95 0.01 240);
+  --popover: oklch(0.20 0.058 259);
+  --popover-foreground: oklch(0.95 0.01 240);
+  --primary: oklch(0.75 0.15 220);
+  --primary-foreground: oklch(0.15 0.05 260);
+  --secondary: oklch(0.25 0.05 258);
+  --secondary-foreground: oklch(0.88 0.03 220);
+  --muted: oklch(0.24 0.04 260);
+  --muted-foreground: oklch(0.65 0.04 240);
+  --accent: oklch(0.28 0.06 255);
+  --accent-foreground: oklch(0.95 0.01 240);
+  --destructive: oklch(0.65 0.2 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0.35 0.06 250 / 50%);
+  --input: oklch(0.30 0.05 258);
+  --ring: oklch(0.70 0.15 220);
+  --chart-1: oklch(0.75 0.15 220);
+  --chart-2: oklch(0.65 0.12 200);
+  --chart-3: oklch(0.55 0.10 240);
+  --chart-4: oklch(0.70 0.18 180);
+  --chart-5: oklch(0.60 0.08 260);
+  --sidebar: oklch(0.15 0.065 262);
+  --sidebar-foreground: oklch(0.90 0.02 240);
+  --sidebar-primary: oklch(0.75 0.15 220);
+  --sidebar-primary-foreground: oklch(0.15 0.05 260);
+  --sidebar-accent: oklch(0.22 0.06 258);
+  --sidebar-accent-foreground: oklch(0.95 0.01 240);
+  --sidebar-border: oklch(0.35 0.06 250 / 40%);
+  --sidebar-ring: oklch(0.70 0.15 220);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [type="button"]:not(:disabled),
+  [type="submit"]:not(:disabled),
+  [type="reset"]:not(:disabled),
+  a[href],
+  select:not(:disabled),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled) {
+    @apply cursor-pointer;
+  }
+}
+
+@layer components {
+  .container {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .flex {
+    min-height: 0;
+    min-width: 0;
+  }
+
+  @media (min-width: 640px) {
+    .container {
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .container {
+      padding-left: 2rem;
+      padding-right: 2rem;
+      max-width: 1440px;
+    }
+  }
+
+  /* Blueprint grid background pattern */
+  .blueprint-grid {
+    background-image:
+      linear-gradient(oklch(0.40 0.08 250 / 15%) 1px, transparent 1px),
+      linear-gradient(90deg, oklch(0.40 0.08 250 / 15%) 1px, transparent 1px),
+      linear-gradient(oklch(0.40 0.08 250 / 8%) 1px, transparent 1px),
+      linear-gradient(90deg, oklch(0.40 0.08 250 / 8%) 1px, transparent 1px);
+    background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
+  }
+
+  /* Blueprint dimension markers */
+  .blueprint-corner {
+    position: relative;
+  }
+  .blueprint-corner::before,
+  .blueprint-corner::after {
+    content: '';
+    position: absolute;
+    border-color: oklch(0.60 0.12 220 / 40%);
+    border-style: solid;
+    width: 12px;
+    height: 12px;
+  }
+  .blueprint-corner::before {
+    top: 0;
+    left: 0;
+    border-width: 1px 0 0 1px;
+  }
+  .blueprint-corner::after {
+    bottom: 0;
+    right: 0;
+    border-width: 0 1px 1px 0;
+  }
+
+  /* Blueprint card style */
+  .blueprint-card {
+    border: 1px solid oklch(0.45 0.10 240 / 30%);
+    background: oklch(0.20 0.055 259 / 80%);
+    backdrop-filter: blur(8px);
+  }
+
+  /* Technical line accent */
+  .tech-line {
+    position: relative;
+  }
+  .tech-line::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, oklch(0.70 0.15 220 / 60%), transparent);
+  }
+}
