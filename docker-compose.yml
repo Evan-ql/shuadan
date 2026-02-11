@@ -28,7 +28,8 @@ services:
 
   # ---- Web 应用 ----
   web:
-    image: ghcr.io/evan-ql/shuadan:latest
+    build:
+      context: https://github.com/Evan-ql/shuadan.git#main
     container_name: settlement-web
     restart: always
     ports:
@@ -36,6 +37,8 @@ services:
     environment:
       - DATABASE_URL=mysql://${MYSQL_USER:-settlement}:${MYSQL_PASSWORD:-settlement2024}@mysql:3306/${MYSQL_DATABASE:-settlement}
       - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-me}
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
       - PORT=9091
       - NODE_ENV=production
     depends_on:

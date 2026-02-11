@@ -17,8 +17,8 @@ import {
   getUserByOpenId,
 } from "./db";
 
-const HARDCODED_USERNAME = "Evan";
-const HARDCODED_PASSWORD = "jiao662532";
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
 
 const settlementInput = z.object({
   orderDate: z.number().nullable().optional(),
@@ -51,7 +51,7 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ input, ctx }) => {
-        if (input.username !== HARDCODED_USERNAME || input.password !== HARDCODED_PASSWORD) {
+        if (input.username !== ADMIN_USERNAME || input.password !== ADMIN_PASSWORD) {
           throw new TRPCError({
             code: "UNAUTHORIZED",
             message: "用户名或密码错误",
@@ -59,12 +59,12 @@ export const appRouter = router({
         }
 
         // Use a fixed openId for this hardcoded user
-        const openId = `local_user_${HARDCODED_USERNAME}`;
+        const openId = `local_user_${ADMIN_USERNAME}`;
 
         // Upsert user in database
         await upsertUser({
           openId,
-          name: HARDCODED_USERNAME,
+          name: ADMIN_USERNAME,
           email: null,
           loginMethod: "password",
           lastSignedIn: new Date(),
@@ -72,7 +72,7 @@ export const appRouter = router({
 
         // Create session token
         const sessionToken = await sdk.createSessionToken(openId, {
-          name: HARDCODED_USERNAME,
+          name: ADMIN_USERNAME,
           expiresInMs: ONE_YEAR_MS,
         });
 
