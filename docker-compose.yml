@@ -1,0 +1,60 @@
+# ============================================
+# 加价结算明细管理系统 - Docker Compose 部署
+# 包含: Web应用 + MySQL数据库 + Watchtower自动更新
+# ============================================
+
+services:
+  # ---- MySQL 数据库 ----
+  mysql:
+    image: mysql:8.0
+    container_name: settlement-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-settlement2024}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-settlement}
+      MYSQL_USER: ${MYSQL_USER:-settlement}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-settlement2024}
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-settlement2024}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---- Web 应用 ----
+  web:
+    image: ghcr.io/evan-ql/shuadan:latest
+    container_name: settlement-web
+    restart: always
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    environment:
+      - DATABASE_URL=mysql://${MYSQL_USER:-settlement}:${MYSQL_PASSWORD:-settlement2024}@mysql:3306/${MYSQL_DATABASE:-settlement}
+      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-me}
+      - PORT=3000
+      - NODE_ENV=production
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  # ---- Watchtower 自动更新 ----
+  watchtower:
+    image: containrrr/watchtower
+    container_name: settlement-watchtower
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_POLL_INTERVAL=300
+      - WATCHTOWER_LABEL_ENABLE=false
+    command: settlement-web
+
+volumes:
+  mysql_data:
+    driver: local
