@@ -207,6 +207,7 @@ export default function SettlementList() {
       originalPrice: item.originalPrice || "0",
       registrationStatus: item.registrationStatus || "",
       settlementStatus: item.settlementStatus || "",
+      remark: item.remark || "",
     });
   };
 
@@ -230,6 +231,7 @@ export default function SettlementList() {
     updateData.originalPrice = editValues.originalPrice || "0";
     updateData.registrationStatus = editValues.registrationStatus || "";
     updateData.settlementStatus = editValues.settlementStatus || "";
+    updateData.remark = editValues.remark || "";
     updateMutation.mutate({ id: editingId, data: updateData });
   };
 
@@ -346,6 +348,7 @@ export default function SettlementList() {
               <th className={`${thClass} text-center`}>登记状态</th>
               <th className={`${thClass} text-center`}>结算状态</th>
               <th className={`${thClass} text-center`}>特殊单</th>
+              <th className={thClass}>备注</th>
               <th className={`${thClass} text-center w-[100px]`}>操作</th>
             </tr>
           </thead>
@@ -353,7 +356,7 @@ export default function SettlementList() {
             {isLoading ? (
               Array.from({ length: 8 }).map((_, i) => (
                 <tr key={i}>
-                  {Array.from({ length: 11 }).map((_, j) => (
+                  {Array.from({ length: 12 }).map((_, j) => (
                     <td key={j} className={tdClass}>
                       <Skeleton className="h-4 w-full" />
                     </td>
@@ -362,7 +365,7 @@ export default function SettlementList() {
               ))
             ) : data?.items.length === 0 ? (
               <tr>
-                <td colSpan={11} className={`${tdClass} text-center py-16 text-muted-foreground`}>
+                <td colSpan={12} className={`${tdClass} text-center py-16 text-muted-foreground`}>
                   <div className="flex flex-col items-center gap-3">
                     <LayoutGrid className="h-10 w-10 text-muted-foreground/30" />
                     <p className="font-heading tracking-wider text-sm">暂无结算记录</p>
@@ -457,6 +460,18 @@ export default function SettlementList() {
                         </TooltipTrigger>
                         <TooltipContent>{item.isSpecial ? "点击取消特殊单" : "点击标记为特殊单"}</TooltipContent>
                       </Tooltip>
+                    </td>
+                    <td className={`${tdClass} text-sm`}>
+                      {isEditing ? (
+                        <EditableCell value={item.remark || ""} field="remark" isEditing={true} editValues={editValues} onEditChange={onEditChange} />
+                      ) : (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="text-sm truncate max-w-[100px] inline-block">{item.remark || "-"}</span>
+                          </TooltipTrigger>
+                          {item.remark && <TooltipContent>{item.remark}</TooltipContent>}
+                        </Tooltip>
+                      )}
                     </td>
                     <td className={`${tdClass} text-center`}>
                       {isEditing ? (

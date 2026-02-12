@@ -339,18 +339,9 @@ export default function SpecialList() {
   const startEdit = (item: any) => {
     setEditingId(item.id);
     setEditValues({
-      orderDate: item.orderDate ? new Date(item.orderDate).toISOString().slice(0, 16) : "",
-      orderNo: item.orderNo || "",
-      groupName: item.groupName || "",
-      customerName: item.customerName || "",
-      customerService: item.customerService || "",
-      originalPrice: item.originalPrice || "0",
       totalPrice: item.totalPrice || "0",
       shouldTransfer: item.shouldTransfer || "0",
       actualTransfer: item.actualTransfer || "0",
-      registrationStatus: item.registrationStatus || "",
-      settlementStatus: item.settlementStatus || "",
-      remark: item.remark || "",
     });
   };
 
@@ -362,22 +353,9 @@ export default function SpecialList() {
   const saveEdit = () => {
     if (editingId === null) return;
     const updateData: Record<string, any> = {};
-    if (editValues.orderDate) {
-      updateData.orderDate = new Date(editValues.orderDate).getTime();
-    } else {
-      updateData.orderDate = null;
-    }
-    updateData.orderNo = editValues.orderNo || "";
-    updateData.groupName = editValues.groupName || "";
-    updateData.customerName = editValues.customerName || "";
-    updateData.customerService = editValues.customerService || "";
-    updateData.originalPrice = editValues.originalPrice || "0";
     updateData.totalPrice = editValues.totalPrice || "0";
     updateData.shouldTransfer = editValues.shouldTransfer || "0";
     updateData.actualTransfer = editValues.actualTransfer || "0";
-    updateData.registrationStatus = editValues.registrationStatus || "";
-    updateData.settlementStatus = editValues.settlementStatus || "";
-    updateData.remark = editValues.remark || "";
     updateData.isSpecial = true;
     updateMutation.mutate({ id: editingId, data: updateData });
   };
@@ -640,63 +618,34 @@ export default function SpecialList() {
                     <td className={`${tdClass} text-center text-muted-foreground text-xs`}>
                       {(data.page - 1) * data.pageSize + index + 1}
                     </td>
-                    {/* 2. 接单日期 */}
+                    {/* 2. 接单日期（同步自结算明细，只读） */}
                     <td className={`${tdClass} font-mono text-xs whitespace-nowrap`}>
-                      {isEditing ? (
-                        <Input
-                          type="datetime-local"
-                          value={editValues.orderDate || ""}
-                          onChange={(e) => onEditChange("orderDate", e.target.value)}
-                          className="h-7 text-xs bg-input/50 border-primary/30 min-w-[150px]"
-                        />
-                      ) : (
-                        formatDate(item.orderDate)
-                      )}
+                      {formatDate(item.orderDate)}
                     </td>
-                    {/* 3. 单号 */}
+                    {/* 3. 单号（同步自结算明细，只读） */}
                     <td className={tdClass}>
-                      {isEditing ? (
-                        <EditableCell value={item.orderNo || ""} field="orderNo" isEditing={true} editValues={editValues} onEditChange={onEditChange} />
-                      ) : (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="text-sm font-mono truncate max-w-[100px] inline-block">{item.orderNo || "-"}</span>
-                          </TooltipTrigger>
-                          {item.orderNo && <TooltipContent>{item.orderNo}</TooltipContent>}
-                        </Tooltip>
-                      )}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="text-sm font-mono truncate max-w-[100px] inline-block">{item.orderNo || "-"}</span>
+                        </TooltipTrigger>
+                        {item.orderNo && <TooltipContent>{item.orderNo}</TooltipContent>}
+                      </Tooltip>
                     </td>
-                    {/* 4. 群名 */}
+                    {/* 4. 群名（同步自结算明细，只读） */}
                     <td className={`${tdClass} font-medium`}>
-                      {isEditing ? (
-                        <EditableCell value={item.groupName || ""} field="groupName" isEditing={true} editValues={editValues} onEditChange={onEditChange} />
-                      ) : (
-                        item.groupName || "-"
-                      )}
+                      {item.groupName || "-"}
                     </td>
-                    {/* 5. 客户名 */}
+                    {/* 5. 客户名（同步自结算明细，只读） */}
                     <td className={tdClass}>
-                      {isEditing ? (
-                        <EditableCell value={item.customerName || ""} field="customerName" isEditing={true} editValues={editValues} onEditChange={onEditChange} />
-                      ) : (
-                        item.customerName || "-"
-                      )}
+                      {item.customerName || "-"}
                     </td>
-                    {/* 6. 客服 */}
+                    {/* 6. 客服（同步自结算明细，只读） */}
                     <td className={tdClass}>
-                      {isEditing ? (
-                        <EditableCell value={item.customerService || ""} field="customerService" isEditing={true} editValues={editValues} onEditChange={onEditChange} />
-                      ) : (
-                        item.customerService || "-"
-                      )}
+                      {item.customerService || "-"}
                     </td>
-                    {/* 7. 原价 */}
+                    {/* 7. 原价（同步自结算明细，只读） */}
                     <td className={`${tdClass} font-mono text-right`}>
-                      {isEditing ? (
-                        <EditableCell value={item.originalPrice || "0"} field="originalPrice" type="number" isEditing={true} editValues={editValues} onEditChange={onEditChange} />
-                      ) : (
-                        formatMoney(item.originalPrice)
-                      )}
+                      {formatMoney(item.originalPrice)}
                     </td>
                     {/* 8. 原价应到手 = 原价 * 40% (自动计算) */}
                     <td className={`${tdClass} font-mono text-right text-cyan-400`}>
@@ -769,34 +718,22 @@ export default function SpecialList() {
                     <td className={`${tdClass} font-mono text-right text-emerald-400 font-bold`}>
                       {formatMoney(orderActualIncome)}
                     </td>
-                    {/* 18. 登记状态 */}
+                    {/* 18. 登记状态（同步自结算明细，只读） */}
                     <td className={`${tdClass} text-center`}>
-                      {isEditing ? (
-                        <EditableCell value={item.registrationStatus ?? ""} field="registrationStatus" type="select" isEditing={true} editValues={editValues} onEditChange={onEditChange} />
-                      ) : (
-                        <StatusBadge value={item.registrationStatus ?? ""} />
-                      )}
+                      <StatusBadge value={item.registrationStatus ?? ""} />
                     </td>
-                    {/* 19. 结算状态 */}
+                    {/* 19. 结算状态（同步自结算明细，只读） */}
                     <td className={`${tdClass} text-center`}>
-                      {isEditing ? (
-                        <EditableCell value={item.settlementStatus ?? ""} field="settlementStatus" type="select" isEditing={true} editValues={editValues} onEditChange={onEditChange} />
-                      ) : (
-                        <StatusBadge value={item.settlementStatus ?? ""} />
-                      )}
+                      <StatusBadge value={item.settlementStatus ?? ""} />
                     </td>
-                    {/* 20. 备注 */}
+                    {/* 20. 备注（同步自结算明细，只读） */}
                     <td className={`${tdClass} text-sm`}>
-                      {isEditing ? (
-                        <EditableCell value={item.remark || ""} field="remark" isEditing={true} editValues={editValues} onEditChange={onEditChange} />
-                      ) : (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="text-sm truncate max-w-[100px] inline-block">{item.remark || "-"}</span>
-                          </TooltipTrigger>
-                          {item.remark && <TooltipContent>{item.remark}</TooltipContent>}
-                        </Tooltip>
-                      )}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="text-sm truncate max-w-[100px] inline-block">{item.remark || "-"}</span>
+                        </TooltipTrigger>
+                        {item.remark && <TooltipContent>{item.remark}</TooltipContent>}
+                      </Tooltip>
                     </td>
                     {/* 21. 操作 */}
                     <td className={`${tdClass} text-center`}>
