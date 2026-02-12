@@ -14,7 +14,7 @@ import {
   importAllData,
   getSpecialStats,
   getSettlementStats,
-} from "./db";
+} from "../db";
 
 // ==================== API Token 管理 ====================
 
