@@ -57,13 +57,11 @@ import { Textarea } from "@/components/ui/textarea";
 
 function formatDate(timestamp: number | null | undefined): string {
   if (!timestamp) return "-";
-  return new Date(timestamp).toLocaleString("zh-CN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const d = new Date(timestamp);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}/${month}/${day}`;
 }
 
 function formatMoney(val: string | number | null | undefined): string {

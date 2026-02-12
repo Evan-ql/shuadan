@@ -42,16 +42,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DatePicker } from "@/components/ui/date-picker";
 
 function formatDate(timestamp: number | null | undefined): string {
   if (!timestamp) return "-";
-  return new Date(timestamp).toLocaleString("zh-CN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const d = new Date(timestamp);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}/${month}/${day}`;
 }
 
 function formatMoney(val: string | null | undefined): string {
@@ -73,6 +72,26 @@ function StatusBadge({ value }: { value: string }) {
     <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded-sm ${cls}`}>
       {value}
     </span>
+  );
+}
+
+function EditableDateCell({
+  editValues,
+  onEditChange,
+}: {
+  editValues: Record<string, string>;
+  onEditChange: (field: string, val: string) => void;
+}) {
+  const dateValue = editValues.orderDate ? new Date(Number(editValues.orderDate)) : undefined;
+  return (
+    <DatePicker
+      value={dateValue}
+      onChange={(date) => {
+        onEditChange("orderDate", date ? String(date.getTime()) : "");
+      }}
+      placeholder="选择日期"
+      className="h-7 text-xs min-w-[130px]"
+    />
   );
 }
 
@@ -199,7 +218,7 @@ export default function SettlementList() {
   const startEdit = (item: any) => {
     setEditingId(item.id);
     setEditValues({
-      orderDate: item.orderDate ? new Date(item.orderDate).toISOString().slice(0, 16) : "",
+      orderDate: item.orderDate ? String(item.orderDate) : "",
       orderNo: item.orderNo || "",
       groupName: item.groupName || "",
       customerName: item.customerName || "",
@@ -220,7 +239,7 @@ export default function SettlementList() {
     if (editingId === null) return;
     const updateData: Record<string, any> = {};
     if (editValues.orderDate) {
-      updateData.orderDate = new Date(editValues.orderDate).getTime();
+      updateData.orderDate = Number(editValues.orderDate);
     } else {
       updateData.orderDate = null;
     }
@@ -386,7 +405,7 @@ export default function SettlementList() {
                     </td>
                     <td className={`${tdClass} font-mono text-xs whitespace-nowrap`}>
                       {isEditing ? (
-                        <EditableCell value="" field="orderDate" type="date" isEditing={true} editValues={editValues} onEditChange={onEditChange} />
+                        <EditableDateCell editValues={editValues} onEditChange={onEditChange} />
                       ) : (
                         formatDate(item.orderDate)
                       )}

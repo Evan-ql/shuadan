@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/ui/date-picker";
 import { useState, useEffect } from "react";
 
 export interface SettlementFormData {
@@ -23,17 +24,6 @@ interface SettlementFormProps {
   onSubmit: (data: SettlementFormData) => void;
   isLoading?: boolean;
   submitLabel?: string;
-}
-
-function formatDateForInput(timestamp: number | null | undefined): string {
-  if (!timestamp) return "";
-  const d = new Date(timestamp);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  const hours = String(d.getHours()).padStart(2, "0");
-  const minutes = String(d.getMinutes()).padStart(2, "0");
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
 export default function SettlementForm({
@@ -88,6 +78,9 @@ export default function SettlementForm({
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
+  // 将 timestamp 转为 Date 对象
+  const orderDateValue = form.orderDate ? new Date(form.orderDate) : undefined;
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Row 1: Date + Order No + Group Name + Customer Name + Customer Service */}
@@ -96,14 +89,12 @@ export default function SettlementForm({
           <Label className="text-xs font-heading tracking-wider uppercase text-muted-foreground">
             接单日期
           </Label>
-          <Input
-            type="datetime-local"
-            value={formatDateForInput(form.orderDate)}
-            onChange={(e) => {
-              const val = e.target.value;
-              updateField("orderDate", val ? new Date(val).getTime() : null);
+          <DatePicker
+            value={orderDateValue}
+            onChange={(date) => {
+              updateField("orderDate", date ? date.getTime() : null);
             }}
-            className="bg-input/50 border-border font-mono text-sm"
+            placeholder="选择日期"
           />
         </div>
         <div className="space-y-2">
