@@ -21,6 +21,8 @@ import {
   getUntransferredSettlements,
   exportAllData,
   importAllData,
+  getSpecialStats,
+  getSettlementStats,
 } from "./db";
 
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin";
@@ -153,6 +155,14 @@ export const appRouter = router({
 
     statuses: protectedProcedure.query(async () => {
       return getDistinctStatuses();
+    }),
+
+    specialStats: protectedProcedure.query(async () => {
+      return getSpecialStats();
+    }),
+
+    settlementStats: protectedProcedure.query(async () => {
+      return getSettlementStats();
     }),
   }),
 

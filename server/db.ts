@@ -360,3 +360,85 @@ export async function getDistinctStatuses() {
     settlementStatuses: settlementStatuses.map(r => r.value).filter(Boolean) as string[],
   };
 }
+
+// ==================== Statistics ====================
+
+// 特殊单统计
+export async function getSpecialStats() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // 1. 未转账金额：转账状态为未转的实际转出金额总和
+  const [untransferredResult] = await db
+    .select({ total: sql<string>`COALESCE(SUM(${settlements.actualTransfer}), 0)` })
+    .from(settlements)
+    .where(and(
+      eq(settlements.isSpecial, true),
+      sql`(${settlements.transferStatus} = '' OR ${settlements.transferStatus} = '未转' OR ${settlements.transferStatus} IS NULL)`
+    ));
+
+  // 2. 垫付金额：结算状态为未结算，且转账状态为已转的实际转出金额总和
+  const [advancedResult] = await db
+    .select({ total: sql<string>`COALESCE(SUM(${settlements.actualTransfer}), 0)` })
+    .from(settlements)
+    .where(and(
+      eq(settlements.isSpecial, true),
+      eq(settlements.transferStatus, "已转"),
+      sql`(${settlements.settlementStatus} = '' OR ${settlements.settlementStatus} = '未结算' OR ${settlements.settlementStatus} IS NULL)`
+    ));
+
+  // 3. 额外利润：结算状态为已结算，转账状态为已转，加价部分实际到手金额总和
+  //    加价部分实际到手 = (加价后总价 - 原价) * 0.4 - 实际转出
+  const [profitResult] = await db
+    .select({
+      total: sql<string>`COALESCE(SUM(
+        (CAST(${settlements.totalPrice} AS DECIMAL(12,2)) - CAST(${settlements.originalPrice} AS DECIMAL(12,2))) * 0.4
+        - CAST(${settlements.actualTransfer} AS DECIMAL(12,2))
+      ), 0)`
+    })
+    .from(settlements)
+    .where(and(
+      eq(settlements.isSpecial, true),
+      eq(settlements.transferStatus, "已转"),
+      eq(settlements.settlementStatus, "已结算")
+    ));
+
+  return {
+    untransferredAmount: Number(untransferredResult.total) || 0,
+    advancedAmount: Number(advancedResult.total) || 0,
+    extraProfit: Number(profitResult.total) || 0,
+  };
+}
+
+// 结算明细统计（当月）
+export async function getSettlementStats() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const now = new Date();
+  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+  // 当月已接订单数量
+  const [countResult] = await db
+    .select({ count: sql<number>`COUNT(*)` })
+    .from(settlements)
+    .where(and(
+      sql`${settlements.orderDate} >= ${firstDayOfMonth}`,
+      sql`${settlements.orderDate} <= ${lastDayOfMonth}`
+    ));
+
+  // 当月预估收入 = 原价总和 * 40%
+  const [incomeResult] = await db
+    .select({ total: sql<string>`COALESCE(SUM(CAST(${settlements.originalPrice} AS DECIMAL(12,2))), 0)` })
+    .from(settlements)
+    .where(and(
+      sql`${settlements.orderDate} >= ${firstDayOfMonth}`,
+      sql`${settlements.orderDate} <= ${lastDayOfMonth}`
+    ));
+
+  return {
+    monthlyOrderCount: Number(countResult.count) || 0,
+    monthlyEstimatedIncome: (Number(incomeResult.total) || 0) * 0.4,
+  };
+}

@@ -33,6 +33,8 @@ import {
   XCircle,
   Star,
   StarOff,
+  ClipboardList,
+  TrendingUp,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -169,6 +171,7 @@ export default function SettlementList() {
   );
 
   const { data, isLoading } = trpc.settlement.list.useQuery(queryInput);
+  const { data: settlementStats } = trpc.settlement.settlementStats.useQuery();
   const utils = trpc.useUtils();
 
   const deleteMutation = trpc.settlement.delete.useMutation({
@@ -288,6 +291,32 @@ export default function SettlementList() {
           <PlusCircle className="h-4 w-4 mr-1" />
           新增记录
         </Button>
+      </div>
+
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="blueprint-card rounded-sm p-4 flex items-center gap-3">
+          <div className="h-10 w-10 rounded-sm bg-sky-500/10 border border-sky-500/20 flex items-center justify-center">
+            <ClipboardList className="h-5 w-5 text-sky-400" />
+          </div>
+          <div>
+            <p className="text-[10px] font-heading tracking-widest uppercase text-muted-foreground">当月已接订单</p>
+            <p className="text-lg font-bold text-sky-400 font-mono">
+              {settlementStats ? settlementStats.monthlyOrderCount : "--"} <span className="text-xs text-muted-foreground font-normal">单</span>
+            </p>
+          </div>
+        </div>
+        <div className="blueprint-card rounded-sm p-4 flex items-center gap-3">
+          <div className="h-10 w-10 rounded-sm bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+            <TrendingUp className="h-5 w-5 text-emerald-400" />
+          </div>
+          <div>
+            <p className="text-[10px] font-heading tracking-widest uppercase text-muted-foreground">当月预估收入</p>
+            <p className="text-lg font-bold text-emerald-400 font-mono">
+              ¥{settlementStats ? settlementStats.monthlyEstimatedIncome.toFixed(2) : "--"}
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Search & Filter Bar */}
