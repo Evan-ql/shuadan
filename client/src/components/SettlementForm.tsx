@@ -1,13 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useState, useEffect } from "react";
 
@@ -25,9 +18,6 @@ export interface SettlementFormData {
   settlementStatus: string;
   remark: string;
 }
-
-const REGISTRATION_STATUS_OPTIONS = ["未登记", "已登记"];
-const SETTLEMENT_STATUS_OPTIONS = ["未结算", "已结算", "部分结算"];
 
 interface SettlementFormProps {
   initialData?: Partial<SettlementFormData>;
@@ -163,8 +153,8 @@ export default function SettlementForm({
         </div>
       </div>
 
-      {/* Row 2: Price + Statuses */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Row 2: Price + Remark */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label className="text-xs font-heading tracking-wider uppercase text-muted-foreground">
             原价
@@ -179,64 +169,15 @@ export default function SettlementForm({
         </div>
         <div className="space-y-2">
           <Label className="text-xs font-heading tracking-wider uppercase text-muted-foreground">
-            登记状态
+            备注
           </Label>
-          <Select
-            value={form.registrationStatus || "placeholder"}
-            onValueChange={(v) => updateField("registrationStatus", v === "placeholder" ? "" : v)}
-          >
-            <SelectTrigger className="bg-input/50 border-border text-sm">
-              <SelectValue placeholder="选择状态" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="placeholder" className="text-muted-foreground">
-                选择状态
-              </SelectItem>
-              {REGISTRATION_STATUS_OPTIONS.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {s}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Input
+            value={form.remark}
+            onChange={(e) => updateField("remark", e.target.value)}
+            placeholder="输入备注信息（可选）"
+            className="bg-input/50 border-border text-sm"
+          />
         </div>
-        <div className="space-y-2">
-          <Label className="text-xs font-heading tracking-wider uppercase text-muted-foreground">
-            结算状态
-          </Label>
-          <Select
-            value={form.settlementStatus || "placeholder"}
-            onValueChange={(v) => updateField("settlementStatus", v === "placeholder" ? "" : v)}
-          >
-            <SelectTrigger className="bg-input/50 border-border text-sm">
-              <SelectValue placeholder="选择状态" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="placeholder" className="text-muted-foreground">
-                选择状态
-              </SelectItem>
-              {SETTLEMENT_STATUS_OPTIONS.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {s}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {/* Row 3: Remark */}
-      <div className="space-y-2">
-        <Label className="text-xs font-heading tracking-wider uppercase text-muted-foreground">
-          备注
-        </Label>
-        <Textarea
-          value={form.remark}
-          onChange={(e) => updateField("remark", e.target.value)}
-          placeholder="输入备注信息（可选）"
-          rows={3}
-          className="bg-input/50 border-border text-sm resize-none"
-        />
       </div>
 
       {/* Submit */}

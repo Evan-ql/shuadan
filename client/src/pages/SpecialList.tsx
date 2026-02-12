@@ -1,6 +1,6 @@
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Tooltip,
   TooltipContent,
@@ -30,8 +38,14 @@ import {
   X,
   Check,
   XCircle,
+  Upload,
+  Eye,
+  FileCheck,
+  ImageIcon,
+  Loader2,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -39,6 +53,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 
 function formatDate(timestamp: number | null | undefined): string {
   if (!timestamp) return "-";
@@ -51,9 +66,35 @@ function formatDate(timestamp: number | null | undefined): string {
   });
 }
 
-function formatMoney(val: string | null | undefined): string {
-  if (!val || val === "0" || val === "0.00") return "0.00";
+function formatMoney(val: string | number | null | undefined): string {
+  if (val === null || val === undefined || val === "" || val === "0" || val === "0.00") return "0.00";
   return Number(val).toFixed(2);
+}
+
+function calcNum(val: string | null | undefined): number {
+  if (!val || val === "") return 0;
+  return Number(val) || 0;
+}
+
+// 公式计算
+function calcOriginalPriceIncome(originalPrice: string | null | undefined): number {
+  return calcNum(originalPrice) * 0.4;
+}
+
+function calcMarkupAmount(totalPrice: string | null | undefined, originalPrice: string | null | undefined): number {
+  return calcNum(totalPrice) - calcNum(originalPrice);
+}
+
+function calcMarkupIncome(totalPrice: string | null | undefined, originalPrice: string | null | undefined): number {
+  return calcMarkupAmount(totalPrice, originalPrice) * 0.4;
+}
+
+function calcMarkupActualIncome(totalPrice: string | null | undefined, originalPrice: string | null | undefined, actualTransfer: string | null | undefined): number {
+  return calcMarkupIncome(totalPrice, originalPrice) - calcNum(actualTransfer);
+}
+
+function calcOrderActualIncome(totalPrice: string | null | undefined, originalPrice: string | null | undefined, actualTransfer: string | null | undefined): number {
+  return calcMarkupActualIncome(totalPrice, originalPrice, actualTransfer) + calcOriginalPriceIncome(originalPrice);
 }
 
 function StatusBadge({ value }: { value: string }) {
@@ -95,7 +136,6 @@ function EditableCell({
 
   if (type === "select") {
     const options: Record<string, string[]> = {
-      transferStatus: ["", "已转", "未转", "部分转"],
       registrationStatus: ["", "已登记", "未登记"],
       settlementStatus: ["", "已结算", "未结算", "部分结算"],
     };
@@ -122,8 +162,81 @@ function EditableCell({
       value={editValues[field] ?? value}
       onChange={(e) => onEditChange(field, e.target.value)}
       className="h-7 text-xs bg-input/50 border-primary/30 min-w-[60px]"
-      type="text"
+      type={type === "number" ? "number" : "text"}
+      step={type === "number" ? "0.01" : undefined}
     />
+  );
+}
+
+// 转账查询弹窗组件
+function TransferQueryDialog({
+  open,
+  onClose,
+  settlementId,
+}: {
+  open: boolean;
+  onClose: () => void;
+  settlementId: number | null;
+}) {
+  const { data: records, isLoading } = trpc.transfer.getBySettlement.useQuery(
+    { settlementId: settlementId! },
+    { enabled: open && settlementId !== null }
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Eye className="h-5 w-5 text-primary" />
+            转账记录查询
+          </DialogTitle>
+          <DialogDescription>查看该订单关联的转账记录和截图凭证</DialogDescription>
+        </DialogHeader>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            <span className="ml-2 text-sm text-muted-foreground">加载中...</span>
+          </div>
+        ) : !records || records.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <ImageIcon className="h-10 w-10 mx-auto mb-2 opacity-30" />
+            <p className="text-sm">暂无转账记录</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {records.map((record: any, idx: number) => (
+              <div key={record.id} className="border border-primary/20 rounded-sm p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-heading tracking-wider text-primary">
+                    转账记录 #{idx + 1}
+                  </span>
+                  <span className="text-xs text-muted-foreground font-mono">
+                    {record.createdAt ? new Date(record.createdAt).toLocaleString("zh-CN") : "-"}
+                  </span>
+                </div>
+                {record.imageData && (
+                  <div className="border border-primary/10 rounded-sm overflow-hidden">
+                    <img
+                      src={record.imageData}
+                      alt="转账截图"
+                      className="w-full max-h-[300px] object-contain bg-black/20 cursor-pointer"
+                      onClick={() => window.open(record.imageData, "_blank")}
+                    />
+                  </div>
+                )}
+                {record.note && (
+                  <p className="text-sm text-muted-foreground bg-muted/20 p-2 rounded-sm">
+                    备注：{record.note}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -140,6 +253,18 @@ export default function SpecialList() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editValues, setEditValues] = useState<Record<string, string>>({});
 
+  // 转账登记弹窗状态
+  const [showTransferDialog, setShowTransferDialog] = useState(false);
+  const [selectedTransferIds, setSelectedTransferIds] = useState<number[]>([]);
+  const [transferImage, setTransferImage] = useState<string>("");
+  const [transferNote, setTransferNote] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 转账查询弹窗状态
+  const [showTransferQuery, setShowTransferQuery] = useState(false);
+  const [querySettlementId, setQuerySettlementId] = useState<number | null>(null);
+
   const queryInput = useMemo(
     () => ({
       page,
@@ -155,6 +280,15 @@ export default function SpecialList() {
 
   const { data, isLoading } = trpc.settlement.list.useQuery(queryInput);
   const utils = trpc.useUtils();
+
+  // 获取特殊单中未转账的订单
+  const { data: untransferredItems } = trpc.transfer.untransferred.useQuery(undefined, {
+    enabled: showTransferDialog,
+  });
+  const specialUntransferred = useMemo(
+    () => (untransferredItems || []).filter((item: any) => item.isSpecial),
+    [untransferredItems]
+  );
 
   const deleteMutation = trpc.settlement.delete.useMutation({
     onSuccess: () => {
@@ -173,6 +307,19 @@ export default function SpecialList() {
       setEditValues({});
     },
     onError: (err) => toast.error("保存失败: " + err.message),
+  });
+
+  const transferMutation = trpc.transfer.create.useMutation({
+    onSuccess: () => {
+      toast.success("转账登记成功！选中的订单已标记为已转账");
+      utils.settlement.list.invalidate();
+      utils.transfer.untransferred.invalidate();
+      setShowTransferDialog(false);
+      setSelectedTransferIds([]);
+      setTransferImage("");
+      setTransferNote("");
+    },
+    onError: (err) => toast.error("转账登记失败: " + err.message),
   });
 
   const handleSearch = () => {
@@ -199,8 +346,8 @@ export default function SpecialList() {
       customerService: item.customerService || "",
       originalPrice: item.originalPrice || "0",
       totalPrice: item.totalPrice || "0",
+      shouldTransfer: item.shouldTransfer || "0",
       actualTransfer: item.actualTransfer || "0",
-      transferStatus: item.transferStatus || "",
       registrationStatus: item.registrationStatus || "",
       settlementStatus: item.settlementStatus || "",
       remark: item.remark || "",
@@ -226,8 +373,8 @@ export default function SpecialList() {
     updateData.customerService = editValues.customerService || "";
     updateData.originalPrice = editValues.originalPrice || "0";
     updateData.totalPrice = editValues.totalPrice || "0";
+    updateData.shouldTransfer = editValues.shouldTransfer || "0";
     updateData.actualTransfer = editValues.actualTransfer || "0";
-    updateData.transferStatus = editValues.transferStatus || "";
     updateData.registrationStatus = editValues.registrationStatus || "";
     updateData.settlementStatus = editValues.settlementStatus || "";
     updateData.remark = editValues.remark || "";
@@ -238,10 +385,83 @@ export default function SpecialList() {
     setEditValues((prev) => ({ ...prev, [field]: val }));
   };
 
+  // 编辑时的计算值
+  const getEditCalcValues = () => {
+    const op = editValues.originalPrice || "0";
+    const tp = editValues.totalPrice || "0";
+    const at = editValues.actualTransfer || "0";
+    return {
+      originalPriceIncome: calcOriginalPriceIncome(op),
+      markupAmount: calcMarkupAmount(tp, op),
+      markupIncome: calcMarkupIncome(tp, op),
+      markupActualIncome: calcMarkupActualIncome(tp, op, at),
+      orderActualIncome: calcOrderActualIncome(tp, op, at),
+    };
+  };
+
+  // 文件上传处理
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("请上传图片文件（JPG、PNG）");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("文件大小不能超过 10MB");
+      return;
+    }
+    setIsUploading(true);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setTransferImage(reader.result as string);
+      setIsUploading(false);
+    };
+    reader.onerror = () => {
+      toast.error("文件读取失败");
+      setIsUploading(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // 提交转账登记
+  const handleTransferSubmit = () => {
+    if (selectedTransferIds.length === 0) {
+      toast.error("请至少选择一个订单");
+      return;
+    }
+    if (!transferImage) {
+      toast.error("请上传转账截图");
+      return;
+    }
+    transferMutation.mutate({
+      settlementIds: selectedTransferIds,
+      imageData: transferImage,
+      note: transferNote,
+    });
+  };
+
+  const toggleTransferSelect = (id: number) => {
+    setSelectedTransferIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
+
+  const selectAllTransfer = () => {
+    if (selectedTransferIds.length === specialUntransferred.length && specialUntransferred.length > 0) {
+      setSelectedTransferIds([]);
+    } else {
+      setSelectedTransferIds(specialUntransferred.map((item: any) => item.id));
+    }
+  };
+
   const hasActiveFilters = search || transferFilter || registrationFilter || settlementFilter;
 
-  const thClass = "text-[10px] font-heading tracking-widest uppercase text-primary/80 border border-primary/20 px-3 py-2.5 bg-primary/5";
-  const tdClass = "text-sm border border-primary/10 px-3 py-2";
+  const thClass = "text-[10px] font-heading tracking-widest uppercase text-primary/80 border border-primary/20 px-2 py-2.5 bg-primary/5 whitespace-nowrap";
+  const tdClass = "text-sm border border-primary/10 px-2 py-2";
+
+  // 总列数 = 21
+  const totalCols = 21;
 
   return (
     <div className="space-y-4">
@@ -260,6 +480,20 @@ export default function SpecialList() {
             </span>
           )}
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-xs border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10"
+          onClick={() => {
+            setShowTransferDialog(true);
+            setSelectedTransferIds([]);
+            setTransferImage("");
+            setTransferNote("");
+          }}
+        >
+          <FileCheck className="h-4 w-4 mr-1" />
+          转账登记
+        </Button>
       </div>
 
       {/* Search & Filter Bar */}
@@ -301,7 +535,6 @@ export default function SpecialList() {
                 <SelectItem value="all">全部转账状态</SelectItem>
                 <SelectItem value="已转">已转</SelectItem>
                 <SelectItem value="未转">未转</SelectItem>
-                <SelectItem value="部分转">部分转</SelectItem>
               </SelectContent>
             </Select>
             <Select value={registrationFilter || "all"} onValueChange={(v) => { setRegistrationFilter(v === "all" ? "" : v); setPage(1); }}>
@@ -340,27 +573,34 @@ export default function SpecialList() {
         <table className="w-full border-collapse">
           <thead>
             <tr>
-              <th className={`${thClass} w-[50px]`}>#</th>
+              <th className={`${thClass} w-[40px]`}>序号</th>
               <th className={thClass}>接单日期</th>
               <th className={thClass}>单号</th>
               <th className={thClass}>群名</th>
               <th className={thClass}>客户名</th>
               <th className={thClass}>客服</th>
               <th className={`${thClass} text-right`}>原价</th>
+              <th className={`${thClass} text-right`}>原价应到手</th>
               <th className={`${thClass} text-right`}>加价后总价</th>
+              <th className={`${thClass} text-right`}>加价金额</th>
+              <th className={`${thClass} text-right`}>加价应到手</th>
+              <th className={`${thClass} text-right`}>应转出</th>
               <th className={`${thClass} text-right`}>实际转出</th>
               <th className={`${thClass} text-center`}>转账状态</th>
+              <th className={`${thClass} text-center`}>转账查询</th>
+              <th className={`${thClass} text-right`}>加价部分实际到手</th>
+              <th className={`${thClass} text-right`}>订单实际到手</th>
               <th className={`${thClass} text-center`}>登记状态</th>
               <th className={`${thClass} text-center`}>结算状态</th>
               <th className={thClass}>备注</th>
-              <th className={`${thClass} text-center w-[100px]`}>操作</th>
+              <th className={`${thClass} text-center w-[80px]`}>操作</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
               Array.from({ length: 8 }).map((_, i) => (
                 <tr key={i}>
-                  {Array.from({ length: 14 }).map((_, j) => (
+                  {Array.from({ length: totalCols }).map((_, j) => (
                     <td key={j} className={tdClass}>
                       <Skeleton className="h-4 w-full" />
                     </td>
@@ -369,7 +609,7 @@ export default function SpecialList() {
               ))
             ) : data?.items.length === 0 ? (
               <tr>
-                <td colSpan={14} className={`${tdClass} text-center py-16 text-muted-foreground`}>
+                <td colSpan={totalCols} className={`${tdClass} text-center py-16 text-muted-foreground`}>
                   <div className="flex flex-col items-center gap-3">
                     <Star className="h-10 w-10 text-muted-foreground/30" />
                     <p className="font-heading tracking-wider text-sm">暂无特殊单记录</p>
@@ -380,30 +620,52 @@ export default function SpecialList() {
             ) : (
               data?.items.map((item, index) => {
                 const isEditing = editingId === item.id;
+                const isTransferred = item.transferStatus === "已转";
+
+                // 计算公式值
+                const op = isEditing ? (editValues.originalPrice || "0") : (item.originalPrice || "0");
+                const tp = isEditing ? (editValues.totalPrice || "0") : (item.totalPrice || "0");
+                const at = isEditing ? (editValues.actualTransfer || "0") : (item.actualTransfer || "0");
+
+                const originalPriceIncome = calcOriginalPriceIncome(op);
+                const markupAmount = calcMarkupAmount(tp, op);
+                const markupIncome = calcMarkupIncome(tp, op);
+                const markupActualIncome = calcMarkupActualIncome(tp, op, at);
+                const orderActualIncome = calcOrderActualIncome(tp, op, at);
+
                 return (
                   <tr key={item.id} className={`transition-colors hover:bg-primary/5 ${isEditing ? "bg-primary/10" : ""}`}>
+                    {/* 1. 序号 */}
                     <td className={`${tdClass} text-center text-muted-foreground text-xs`}>
                       {(data.page - 1) * data.pageSize + index + 1}
                     </td>
+                    {/* 2. 接单日期 */}
                     <td className={`${tdClass} font-mono text-xs whitespace-nowrap`}>
                       {isEditing ? (
-                        <EditableCell value="" field="orderDate" type="date" isEditing={true} editValues={editValues} onEditChange={onEditChange} />
+                        <Input
+                          type="datetime-local"
+                          value={editValues.orderDate || ""}
+                          onChange={(e) => onEditChange("orderDate", e.target.value)}
+                          className="h-7 text-xs bg-input/50 border-primary/30 min-w-[150px]"
+                        />
                       ) : (
                         formatDate(item.orderDate)
                       )}
                     </td>
+                    {/* 3. 单号 */}
                     <td className={tdClass}>
                       {isEditing ? (
                         <EditableCell value={item.orderNo || ""} field="orderNo" isEditing={true} editValues={editValues} onEditChange={onEditChange} />
                       ) : (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className="text-sm font-mono truncate max-w-[120px] inline-block">{item.orderNo || "-"}</span>
+                            <span className="text-sm font-mono truncate max-w-[100px] inline-block">{item.orderNo || "-"}</span>
                           </TooltipTrigger>
                           {item.orderNo && <TooltipContent>{item.orderNo}</TooltipContent>}
                         </Tooltip>
                       )}
                     </td>
+                    {/* 4. 群名 */}
                     <td className={`${tdClass} font-medium`}>
                       {isEditing ? (
                         <EditableCell value={item.groupName || ""} field="groupName" isEditing={true} editValues={editValues} onEditChange={onEditChange} />
@@ -411,6 +673,7 @@ export default function SpecialList() {
                         item.groupName || "-"
                       )}
                     </td>
+                    {/* 5. 客户名 */}
                     <td className={tdClass}>
                       {isEditing ? (
                         <EditableCell value={item.customerName || ""} field="customerName" isEditing={true} editValues={editValues} onEditChange={onEditChange} />
@@ -418,6 +681,7 @@ export default function SpecialList() {
                         item.customerName || "-"
                       )}
                     </td>
+                    {/* 6. 客服 */}
                     <td className={tdClass}>
                       {isEditing ? (
                         <EditableCell value={item.customerService || ""} field="customerService" isEditing={true} editValues={editValues} onEditChange={onEditChange} />
@@ -425,6 +689,7 @@ export default function SpecialList() {
                         item.customerService || "-"
                       )}
                     </td>
+                    {/* 7. 原价 */}
                     <td className={`${tdClass} font-mono text-right`}>
                       {isEditing ? (
                         <EditableCell value={item.originalPrice || "0"} field="originalPrice" type="number" isEditing={true} editValues={editValues} onEditChange={onEditChange} />
@@ -432,6 +697,11 @@ export default function SpecialList() {
                         formatMoney(item.originalPrice)
                       )}
                     </td>
+                    {/* 8. 原价应到手 = 原价 * 40% (自动计算) */}
+                    <td className={`${tdClass} font-mono text-right text-cyan-400`}>
+                      {formatMoney(originalPriceIncome)}
+                    </td>
+                    {/* 9. 加价后总价 */}
                     <td className={`${tdClass} font-mono text-right text-primary`}>
                       {isEditing ? (
                         <EditableCell value={item.totalPrice || "0"} field="totalPrice" type="number" isEditing={true} editValues={editValues} onEditChange={onEditChange} />
@@ -439,6 +709,23 @@ export default function SpecialList() {
                         formatMoney(item.totalPrice)
                       )}
                     </td>
+                    {/* 10. 加价金额 = 加价后总价 - 原价 (自动计算) */}
+                    <td className={`${tdClass} font-mono text-right text-cyan-400`}>
+                      {formatMoney(markupAmount)}
+                    </td>
+                    {/* 11. 加价应到手 = 加价金额 * 40% (自动计算) */}
+                    <td className={`${tdClass} font-mono text-right text-cyan-400`}>
+                      {formatMoney(markupIncome)}
+                    </td>
+                    {/* 12. 应转出 */}
+                    <td className={`${tdClass} font-mono text-right`}>
+                      {isEditing ? (
+                        <EditableCell value={item.shouldTransfer || "0"} field="shouldTransfer" type="number" isEditing={true} editValues={editValues} onEditChange={onEditChange} />
+                      ) : (
+                        formatMoney(item.shouldTransfer)
+                      )}
+                    </td>
+                    {/* 13. 实际转出 */}
                     <td className={`${tdClass} font-mono text-right`}>
                       {isEditing ? (
                         <EditableCell value={item.actualTransfer || "0"} field="actualTransfer" type="number" isEditing={true} editValues={editValues} onEditChange={onEditChange} />
@@ -446,13 +733,42 @@ export default function SpecialList() {
                         formatMoney(item.actualTransfer)
                       )}
                     </td>
+                    {/* 14. 转账状态（只读） */}
                     <td className={`${tdClass} text-center`}>
-                      {isEditing ? (
-                        <EditableCell value={item.transferStatus ?? ""} field="transferStatus" type="select" isEditing={true} editValues={editValues} onEditChange={onEditChange} />
+                      <StatusBadge value={item.transferStatus || "未转"} />
+                    </td>
+                    {/* 15. 转账查询 */}
+                    <td className={`${tdClass} text-center`}>
+                      {isTransferred ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-primary hover:text-primary hover:bg-primary/10"
+                              onClick={() => {
+                                setQuerySettlementId(item.id);
+                                setShowTransferQuery(true);
+                              }}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>查看转账记录</TooltipContent>
+                        </Tooltip>
                       ) : (
-                        <StatusBadge value={item.transferStatus ?? ""} />
+                        <span className="text-muted-foreground/50">-</span>
                       )}
                     </td>
+                    {/* 16. 加价部分实际到手 = 加价应到手 - 实际转出 (自动计算) */}
+                    <td className={`${tdClass} font-mono text-right text-emerald-400`}>
+                      {formatMoney(markupActualIncome)}
+                    </td>
+                    {/* 17. 订单实际到手 = 加价部分实际到手 + 原价应到手 (自动计算) */}
+                    <td className={`${tdClass} font-mono text-right text-emerald-400 font-bold`}>
+                      {formatMoney(orderActualIncome)}
+                    </td>
+                    {/* 18. 登记状态 */}
                     <td className={`${tdClass} text-center`}>
                       {isEditing ? (
                         <EditableCell value={item.registrationStatus ?? ""} field="registrationStatus" type="select" isEditing={true} editValues={editValues} onEditChange={onEditChange} />
@@ -460,6 +776,7 @@ export default function SpecialList() {
                         <StatusBadge value={item.registrationStatus ?? ""} />
                       )}
                     </td>
+                    {/* 19. 结算状态 */}
                     <td className={`${tdClass} text-center`}>
                       {isEditing ? (
                         <EditableCell value={item.settlementStatus ?? ""} field="settlementStatus" type="select" isEditing={true} editValues={editValues} onEditChange={onEditChange} />
@@ -467,18 +784,20 @@ export default function SpecialList() {
                         <StatusBadge value={item.settlementStatus ?? ""} />
                       )}
                     </td>
+                    {/* 20. 备注 */}
                     <td className={`${tdClass} text-sm`}>
                       {isEditing ? (
                         <EditableCell value={item.remark || ""} field="remark" isEditing={true} editValues={editValues} onEditChange={onEditChange} />
                       ) : (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className="text-sm truncate max-w-[120px] inline-block">{item.remark || "-"}</span>
+                            <span className="text-sm truncate max-w-[100px] inline-block">{item.remark || "-"}</span>
                           </TooltipTrigger>
                           {item.remark && <TooltipContent>{item.remark}</TooltipContent>}
                         </Tooltip>
                       )}
                     </td>
+                    {/* 21. 操作 */}
                     <td className={`${tdClass} text-center`}>
                       {isEditing ? (
                         <div className="flex items-center justify-center gap-1">
@@ -582,6 +901,159 @@ export default function SpecialList() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* 转账登记弹窗 */}
+      <Dialog open={showTransferDialog} onOpenChange={setShowTransferDialog}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileCheck className="h-5 w-5 text-emerald-400" />
+              转账登记
+            </DialogTitle>
+            <DialogDescription>
+              选择需要标记为已转账的订单，上传转账截图作为凭证
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* 选择未转账订单 */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-medium">选择未转账订单</h4>
+              <Button variant="ghost" size="sm" className="text-xs" onClick={selectAllTransfer}>
+                {selectedTransferIds.length === specialUntransferred.length && specialUntransferred.length > 0 ? "取消全选" : "全选"}
+              </Button>
+            </div>
+
+            {specialUntransferred.length === 0 ? (
+              <div className="text-center py-4 text-muted-foreground text-sm">
+                暂无未转账的特殊单订单
+              </div>
+            ) : (
+              <div className="border border-primary/20 rounded-sm overflow-hidden max-h-[200px] overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0">
+                    <tr className="bg-primary/5">
+                      <th className="px-3 py-2 text-left w-8"></th>
+                      <th className="px-3 py-2 text-left text-xs font-heading tracking-wider">单号</th>
+                      <th className="px-3 py-2 text-left text-xs font-heading tracking-wider">群名</th>
+                      <th className="px-3 py-2 text-left text-xs font-heading tracking-wider">客户名</th>
+                      <th className="px-3 py-2 text-right text-xs font-heading tracking-wider">原价</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {specialUntransferred.map((item: any) => (
+                      <tr
+                        key={item.id}
+                        className={`cursor-pointer transition-colors ${selectedTransferIds.includes(item.id) ? "bg-emerald-500/10" : "hover:bg-primary/5"}`}
+                        onClick={() => toggleTransferSelect(item.id)}
+                      >
+                        <td className="px-3 py-2">
+                          <Checkbox
+                            checked={selectedTransferIds.includes(item.id)}
+                            onCheckedChange={() => toggleTransferSelect(item.id)}
+                          />
+                        </td>
+                        <td className="px-3 py-2 font-mono">{item.orderNo || "-"}</td>
+                        <td className="px-3 py-2">{item.groupName || "-"}</td>
+                        <td className="px-3 py-2">{item.customerName || "-"}</td>
+                        <td className="px-3 py-2 text-right font-mono">{formatMoney(item.originalPrice)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* 上传转账截图 */}
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium">
+              上传转账截图 <span className="text-destructive">*</span>
+            </h4>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleFileUpload}
+            />
+            {transferImage ? (
+              <div className="relative border border-emerald-500/30 rounded-sm overflow-hidden">
+                <img src={transferImage} alt="转账截图" className="w-full max-h-[200px] object-contain bg-black/20" />
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  className="absolute top-2 right-2 h-6 w-6"
+                  onClick={() => {
+                    setTransferImage("");
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                  }}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            ) : (
+              <div
+                className="border-2 border-dashed border-primary/30 rounded-sm p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {isUploading ? (
+                  <Loader2 className="h-8 w-8 mx-auto mb-2 animate-spin text-primary" />
+                ) : (
+                  <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                )}
+                <p className="text-sm text-muted-foreground">点击上传转账截图</p>
+                <p className="text-xs text-muted-foreground/60 mt-1">支持 JPG、PNG 格式，最大 10MB</p>
+              </div>
+            )}
+          </div>
+
+          {/* 备注 */}
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium">备注（可选）</h4>
+            <Textarea
+              value={transferNote}
+              onChange={(e) => setTransferNote(e.target.value)}
+              placeholder="输入转账备注..."
+              rows={2}
+              className="bg-input/50 border-border text-sm resize-none"
+            />
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowTransferDialog(false)}>
+              取消
+            </Button>
+            <Button
+              onClick={handleTransferSubmit}
+              disabled={transferMutation.isPending || selectedTransferIds.length === 0 || !transferImage}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              {transferMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  处理中...
+                </>
+              ) : (
+                <>
+                  <FileCheck className="h-4 w-4 mr-1" />
+                  确认转账登记
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 转账查询弹窗 */}
+      <TransferQueryDialog
+        open={showTransferQuery}
+        onClose={() => {
+          setShowTransferQuery(false);
+          setQuerySettlementId(null);
+        }}
+        settlementId={querySettlementId}
+      />
     </div>
   );
 }

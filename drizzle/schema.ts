@@ -37,6 +37,8 @@ export const settlements = mysqlTable("settlements", {
   originalPrice: decimal("originalPrice", { precision: 12, scale: 2 }).default("0"),
   /** 加价后总价 */
   totalPrice: decimal("totalPrice", { precision: 12, scale: 2 }).default("0"),
+  /** 应转出 */
+  shouldTransfer: decimal("shouldTransfer", { precision: 12, scale: 2 }).default("0"),
   /** 实际转出 */
   actualTransfer: decimal("actualTransfer", { precision: 12, scale: 2 }).default("0"),
   /** 转账状态 */

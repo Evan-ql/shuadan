@@ -32,6 +32,7 @@ const settlementInput = z.object({
   customerService: z.string().optional().default(""),
   originalPrice: z.string().optional().default("0"),
   totalPrice: z.string().optional().default("0"),
+  shouldTransfer: z.string().optional().default("0"),
   actualTransfer: z.string().optional().default("0"),
   transferStatus: z.string().optional().default(""),
   registrationStatus: z.string().optional().default(""),
