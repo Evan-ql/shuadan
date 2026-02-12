@@ -416,8 +416,9 @@ export async function getSettlementStats() {
   if (!db) throw new Error("Database not available");
 
   const now = new Date();
-  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+  // orderDate 存储的是 UTC 毫秒时间戳（bigint），需要用毫秒时间戳做比较
+  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999).getTime();
 
   // 当月已接订单数量
   const [countResult] = await db
