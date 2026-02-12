@@ -378,6 +378,7 @@ export default function SpecialList() {
     updateData.registrationStatus = editValues.registrationStatus || "";
     updateData.settlementStatus = editValues.settlementStatus || "";
     updateData.remark = editValues.remark || "";
+    updateData.isSpecial = true;
     updateMutation.mutate({ id: editingId, data: updateData });
   };
 
