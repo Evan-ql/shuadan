@@ -80,11 +80,16 @@ function calcOriginalPriceIncome(originalPrice: string | null | undefined): numb
 }
 
 function calcMarkupAmount(totalPrice: string | null | undefined, originalPrice: string | null | undefined): number {
-  return calcNum(totalPrice) - calcNum(originalPrice);
+  const tp = calcNum(totalPrice);
+  const op = calcNum(originalPrice);
+  // 当加价后总价未填写（为0）时，加价金额显示0
+  if (tp === 0) return 0;
+  return tp - op;
 }
 
 function calcMarkupIncome(totalPrice: string | null | undefined, originalPrice: string | null | undefined): number {
-  return calcMarkupAmount(totalPrice, originalPrice) * 0.4;
+  const amount = calcMarkupAmount(totalPrice, originalPrice);
+  return Math.max(amount * 0.4, 0);
 }
 
 function calcMarkupActualIncome(totalPrice: string | null | undefined, originalPrice: string | null | undefined, actualTransfer: string | null | undefined): number {
@@ -334,8 +339,11 @@ export default function SpecialList() {
     setPage(1);
   };
 
+  const [editingItem, setEditingItem] = useState<any>(null);
+
   const startEdit = (item: any) => {
     setEditingId(item.id);
+    setEditingItem(item);
     setEditValues({
       totalPrice: item.totalPrice || "0",
       shouldTransfer: item.shouldTransfer || "0",
@@ -345,16 +353,30 @@ export default function SpecialList() {
 
   const cancelEdit = () => {
     setEditingId(null);
+    setEditingItem(null);
     setEditValues({});
   };
 
   const saveEdit = () => {
-    if (editingId === null) return;
-    const updateData: Record<string, any> = {};
-    updateData.totalPrice = editValues.totalPrice || "0";
-    updateData.shouldTransfer = editValues.shouldTransfer || "0";
-    updateData.actualTransfer = editValues.actualTransfer || "0";
-    updateData.isSpecial = true;
+    if (editingId === null || !editingItem) return;
+    // 保留所有同步字段的原始值，只更新可编辑字段
+    const updateData: Record<string, any> = {
+      // 同步字段（保留原始值，防止被重置）
+      orderDate: editingItem.orderDate,
+      orderNo: editingItem.orderNo || "",
+      groupName: editingItem.groupName || "",
+      customerName: editingItem.customerName || "",
+      customerService: editingItem.customerService || "",
+      originalPrice: editingItem.originalPrice || "0",
+      registrationStatus: editingItem.registrationStatus || "未登记",
+      settlementStatus: editingItem.settlementStatus || "未结算",
+      remark: editingItem.remark || "",
+      // 可编辑字段
+      totalPrice: editValues.totalPrice || "0",
+      shouldTransfer: editValues.shouldTransfer || "0",
+      actualTransfer: editValues.actualTransfer || "0",
+      isSpecial: true,
+    };
     updateMutation.mutate({ id: editingId, data: updateData });
   };
 
@@ -364,7 +386,7 @@ export default function SpecialList() {
 
   // 编辑时的计算值
   const getEditCalcValues = () => {
-    const op = editValues.originalPrice || "0";
+    const op = editingItem?.originalPrice || "0";
     const tp = editValues.totalPrice || "0";
     const at = editValues.actualTransfer || "0";
     return {
@@ -599,8 +621,8 @@ export default function SpecialList() {
                 const isEditing = editingId === item.id;
                 const isTransferred = item.transferStatus === "已转";
 
-                // 计算公式值
-                const op = isEditing ? (editValues.originalPrice || "0") : (item.originalPrice || "0");
+                // 计算公式值（原价是同步字段不可编辑，始终从 item 获取）
+                const op = item.originalPrice || "0";
                 const tp = isEditing ? (editValues.totalPrice || "0") : (item.totalPrice || "0");
                 const at = isEditing ? (editValues.actualTransfer || "0") : (item.actualTransfer || "0");
 
