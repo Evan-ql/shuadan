@@ -179,22 +179,16 @@ function DashboardLayoutContent({
   children,
   setSidebarWidth,
 }: DashboardLayoutContentProps) {
+  // ✅ 所有 Hooks 必须在组件顶部调用，不能在条件返回之后
   const { user, loading, logout } = useAuth();
-
-  // 未登录显示登录页面
-  if (loading) {
-    return <DashboardLayoutSkeleton />;
-  }
-  if (!user) {
-    return <LoginPage />;
-  }
   const [location, setLocation] = useLocation();
   const { state, toggleSidebar } = useSidebar();
-  const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const activeMenuItem = menuItems.find((item) => item.path === location);
   const isMobile = useIsMobile();
+
+  const activeMenuItem = menuItems.find((item) => item.path === location);
+  const isCollapsed = state === "collapsed";
 
   useEffect(() => {
     if (isCollapsed) {
@@ -231,6 +225,14 @@ function DashboardLayoutContent({
       document.body.style.userSelect = "";
     };
   }, [isResizing, setSidebarWidth]);
+
+  // ✅ 条件返回放在所有 Hooks 之后
+  if (loading) {
+    return <DashboardLayoutSkeleton />;
+  }
+  if (!user) {
+    return <LoginPage />;
+  }
 
   return (
     <>
