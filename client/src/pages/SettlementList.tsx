@@ -1,6 +1,6 @@
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Tooltip,
   TooltipContent,
@@ -33,8 +41,14 @@ import {
   XCircle,
   Star,
   StarOff,
+  Upload,
+  Eye,
+  FileCheck,
+  ImageIcon,
+  Loader2,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -42,6 +56,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 
 function formatDate(timestamp: number | null | undefined): string {
   if (!timestamp) return "-";
@@ -64,7 +79,6 @@ function StatusBadge({ value }: { value: string }) {
   const colorMap: Record<string, string> = {
     已转: "text-emerald-400 border-emerald-400/30 bg-emerald-400/10",
     未转: "text-amber-400 border-amber-400/30 bg-amber-400/10",
-    部分转: "text-sky-400 border-sky-400/30 bg-sky-400/10",
     已登记: "text-emerald-400 border-emerald-400/30 bg-emerald-400/10",
     未登记: "text-amber-400 border-amber-400/30 bg-amber-400/10",
     已结算: "text-emerald-400 border-emerald-400/30 bg-emerald-400/10",
@@ -129,6 +143,330 @@ function EditableCell({
   );
 }
 
+// ==================== Transfer Register Dialog ====================
+function TransferRegisterDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [imagePreview, setImagePreview] = useState<string>("");
+  const [note, setNote] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const utils = trpc.useUtils();
+
+  const { data: untransferred, isLoading } = trpc.transfer.untransferred.useQuery(
+    undefined,
+    { enabled: open }
+  );
+
+  const createMutation = trpc.transfer.create.useMutation({
+    onSuccess: () => {
+      toast.success("转账登记成功，已标记为已转账");
+      utils.settlement.list.invalidate();
+      utils.transfer.untransferred.invalidate();
+      onOpenChange(false);
+      setSelectedIds([]);
+      setImagePreview("");
+      setNote("");
+    },
+    onError: (err) => toast.error("转账登记失败: " + err.message),
+  });
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
+
+  const selectAll = () => {
+    if (!untransferred) return;
+    if (selectedIds.length === untransferred.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(untransferred.map((item) => item.id));
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("请上传图片文件");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("图片大小不能超过 10MB");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSubmit = () => {
+    if (selectedIds.length === 0) {
+      toast.error("请至少选择一个订单");
+      return;
+    }
+    if (!imagePreview) {
+      toast.error("请上传转账截图");
+      return;
+    }
+    createMutation.mutate({
+      settlementIds: selectedIds,
+      imageData: imagePreview,
+      note,
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileCheck className="h-5 w-5 text-primary" />
+            转账登记
+          </DialogTitle>
+          <DialogDescription>
+            选择需要标记为已转账的订单，上传转账截图作为凭证
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* Order Selection */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">选择未转账订单</span>
+            {untransferred && untransferred.length > 0 && (
+              <Button variant="ghost" size="sm" className="text-xs" onClick={selectAll}>
+                {selectedIds.length === untransferred.length ? "取消全选" : "全选"}
+              </Button>
+            )}
+          </div>
+
+          <div className="border border-border rounded-sm max-h-[250px] overflow-y-auto">
+            {isLoading ? (
+              <div className="p-4 text-center text-muted-foreground text-sm">加载中...</div>
+            ) : !untransferred || untransferred.length === 0 ? (
+              <div className="p-4 text-center text-muted-foreground text-sm">暂无未转账订单</div>
+            ) : (
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="bg-muted/30">
+                    <th className="px-3 py-2 text-left w-[40px]">
+                      <Checkbox
+                        checked={selectedIds.length === untransferred.length && untransferred.length > 0}
+                        onCheckedChange={selectAll}
+                      />
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">单号</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">群名</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">客户名</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-muted-foreground">原价</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {untransferred.map((item) => (
+                    <tr
+                      key={item.id}
+                      className={`border-t border-border/50 cursor-pointer transition-colors ${
+                        selectedIds.includes(item.id) ? "bg-primary/10" : "hover:bg-muted/20"
+                      }`}
+                      onClick={() => toggleSelect(item.id)}
+                    >
+                      <td className="px-3 py-2">
+                        <Checkbox
+                          checked={selectedIds.includes(item.id)}
+                          onCheckedChange={() => toggleSelect(item.id)}
+                        />
+                      </td>
+                      <td className="px-3 py-2 font-mono">{item.orderNo || "-"}</td>
+                      <td className="px-3 py-2">{item.groupName || "-"}</td>
+                      <td className="px-3 py-2">{item.customerName || "-"}</td>
+                      <td className="px-3 py-2 text-right font-mono">{formatMoney(item.originalPrice)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {selectedIds.length > 0 && (
+            <p className="text-xs text-primary">已选择 {selectedIds.length} 个订单</p>
+          )}
+        </div>
+
+        {/* Image Upload */}
+        <div className="space-y-3">
+          <span className="text-sm font-medium">
+            上传转账截图 <span className="text-destructive">*</span>
+          </span>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+
+          {imagePreview ? (
+            <div className="relative border border-border rounded-sm p-2">
+              <img
+                src={imagePreview}
+                alt="转账截图"
+                className="max-h-[200px] mx-auto rounded"
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute top-1 right-1 h-6 w-6 bg-background/80"
+                onClick={() => {
+                  setImagePreview("");
+                  if (fileInputRef.current) fileInputRef.current.value = "";
+                }}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          ) : (
+            <div
+              className="border-2 border-dashed border-border rounded-sm p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">点击上传转账截图</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">支持 JPG、PNG 格式，最大 10MB</p>
+            </div>
+          )}
+        </div>
+
+        {/* Note */}
+        <div className="space-y-2">
+          <span className="text-sm font-medium">备注（可选）</span>
+          <Textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="输入转账备注..."
+            rows={2}
+            className="bg-input/50 border-border text-sm resize-none"
+          />
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            取消
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={createMutation.isPending || selectedIds.length === 0 || !imagePreview}
+          >
+            {createMutation.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                提交中...
+              </>
+            ) : (
+              <>
+                <FileCheck className="h-4 w-4 mr-1" />
+                确认转账登记
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ==================== Transfer View Dialog ====================
+function TransferViewDialog({
+  open,
+  onOpenChange,
+  settlementId,
+  orderNo,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  settlementId: number;
+  orderNo: string;
+}) {
+  const { data: records, isLoading } = trpc.transfer.getBySettlement.useQuery(
+    { settlementId },
+    { enabled: open && settlementId > 0 }
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Eye className="h-5 w-5 text-primary" />
+            转账记录查询
+          </DialogTitle>
+          <DialogDescription>
+            订单 {orderNo || "-"} 的转账记录
+          </DialogDescription>
+        </DialogHeader>
+
+        {isLoading ? (
+          <div className="p-8 text-center text-muted-foreground">加载中...</div>
+        ) : !records || records.length === 0 ? (
+          <div className="p-8 text-center text-muted-foreground">
+            <ImageIcon className="h-10 w-10 mx-auto mb-3 text-muted-foreground/30" />
+            <p className="text-sm">暂无转账记录</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {records.map((record, idx) => (
+              <div key={record.id} className="border border-border rounded-sm p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-primary">
+                    转账记录 #{idx + 1}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {record.createdAt
+                      ? new Date(record.createdAt).toLocaleString("zh-CN")
+                      : "-"}
+                  </span>
+                </div>
+
+                {record.imageData && (
+                  <div className="border border-border/50 rounded overflow-hidden">
+                    <img
+                      src={record.imageData}
+                      alt="转账截图"
+                      className="max-w-full max-h-[400px] mx-auto cursor-pointer"
+                      onClick={() => window.open(record.imageData!, "_blank")}
+                    />
+                  </div>
+                )}
+
+                {record.note && (
+                  <p className="text-sm text-muted-foreground">
+                    备注：{record.note}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            关闭
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ==================== Main Component ====================
 export default function SettlementList() {
   const [, setLocation] = useLocation();
   const [page, setPage] = useState(1);
@@ -136,10 +474,14 @@ export default function SettlementList() {
   const [searchInput, setSearchInput] = useState("");
   const [registrationFilter, setRegistrationFilter] = useState("");
   const [settlementFilter, setSettlementFilter] = useState("");
+  const [transferFilter, setTransferFilter] = useState("");
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editValues, setEditValues] = useState<Record<string, string>>({});
+  const [showTransferRegister, setShowTransferRegister] = useState(false);
+  const [viewTransferId, setViewTransferId] = useState<number | null>(null);
+  const [viewTransferOrderNo, setViewTransferOrderNo] = useState("");
 
   const queryInput = useMemo(
     () => ({
@@ -148,8 +490,9 @@ export default function SettlementList() {
       search: search || undefined,
       registrationStatus: registrationFilter || undefined,
       settlementStatus: settlementFilter || undefined,
+      transferStatus: transferFilter || undefined,
     }),
-    [page, search, registrationFilter, settlementFilter]
+    [page, search, registrationFilter, settlementFilter, transferFilter]
   );
 
   const { data, isLoading } = trpc.settlement.list.useQuery(queryInput);
@@ -196,6 +539,7 @@ export default function SettlementList() {
     setSearchInput("");
     setRegistrationFilter("");
     setSettlementFilter("");
+    setTransferFilter("");
     setPage(1);
   };
 
@@ -240,7 +584,7 @@ export default function SettlementList() {
     setEditValues((prev) => ({ ...prev, [field]: val }));
   };
 
-  const hasActiveFilters = search || registrationFilter || settlementFilter;
+  const hasActiveFilters = search || registrationFilter || settlementFilter || transferFilter;
 
   const thClass = "text-[10px] font-heading tracking-widest uppercase text-primary/80 border border-primary/20 px-3 py-2.5 bg-primary/5";
   const tdClass = "text-sm border border-primary/10 px-3 py-2";
@@ -262,14 +606,25 @@ export default function SettlementList() {
             </span>
           )}
         </div>
-        <Button
-          onClick={() => setLocation("/create")}
-          size="sm"
-          className="font-heading tracking-wider uppercase text-xs"
-        >
-          <PlusCircle className="h-4 w-4 mr-1" />
-          新增记录
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => setShowTransferRegister(true)}
+            size="sm"
+            variant="outline"
+            className="font-heading tracking-wider text-xs border-emerald-400/30 text-emerald-400 hover:bg-emerald-400/10 hover:text-emerald-300"
+          >
+            <FileCheck className="h-4 w-4 mr-1" />
+            转账登记
+          </Button>
+          <Button
+            onClick={() => setLocation("/create")}
+            size="sm"
+            className="font-heading tracking-wider uppercase text-xs"
+          >
+            <PlusCircle className="h-4 w-4 mr-1" />
+            新增记录
+          </Button>
+        </div>
       </div>
 
       {/* Search & Filter Bar */}
@@ -303,6 +658,16 @@ export default function SettlementList() {
 
         {showFilters && (
           <div className="flex items-center gap-3 flex-wrap pt-2 border-t border-primary/10">
+            <Select value={transferFilter || "all"} onValueChange={(v) => { setTransferFilter(v === "all" ? "" : v); setPage(1); }}>
+              <SelectTrigger className="w-[130px] h-8 text-xs bg-input/50 border-border">
+                <SelectValue placeholder="转账状态" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">全部转账状态</SelectItem>
+                <SelectItem value="已转">已转</SelectItem>
+                <SelectItem value="未转">未转</SelectItem>
+              </SelectContent>
+            </Select>
             <Select value={registrationFilter || "all"} onValueChange={(v) => { setRegistrationFilter(v === "all" ? "" : v); setPage(1); }}>
               <SelectTrigger className="w-[130px] h-8 text-xs bg-input/50 border-border">
                 <SelectValue placeholder="登记状态" />
@@ -348,6 +713,8 @@ export default function SettlementList() {
               <th className={`${thClass} text-right`}>原价</th>
               <th className={`${thClass} text-center`}>登记状态</th>
               <th className={`${thClass} text-center`}>结算状态</th>
+              <th className={`${thClass} text-center`}>转账状态</th>
+              <th className={`${thClass} text-center`}>转账查询</th>
               <th className={`${thClass} text-center`}>特殊单</th>
               <th className={`${thClass} text-center w-[100px]`}>操作</th>
             </tr>
@@ -356,7 +723,7 @@ export default function SettlementList() {
             {isLoading ? (
               Array.from({ length: 8 }).map((_, i) => (
                 <tr key={i}>
-                  {Array.from({ length: 11 }).map((_, j) => (
+                  {Array.from({ length: 13 }).map((_, j) => (
                     <td key={j} className={tdClass}>
                       <Skeleton className="h-4 w-full" />
                     </td>
@@ -365,7 +732,7 @@ export default function SettlementList() {
               ))
             ) : data?.items.length === 0 ? (
               <tr>
-                <td colSpan={11} className={`${tdClass} text-center py-16 text-muted-foreground`}>
+                <td colSpan={13} className={`${tdClass} text-center py-16 text-muted-foreground`}>
                   <div className="flex flex-col items-center gap-3">
                     <LayoutGrid className="h-10 w-10 text-muted-foreground/30" />
                     <p className="font-heading tracking-wider text-sm">暂无结算记录</p>
@@ -379,6 +746,7 @@ export default function SettlementList() {
             ) : (
               data?.items.map((item, index) => {
                 const isEditing = editingId === item.id;
+                const transferStatus = item.transferStatus || "未转";
                 return (
                   <tr key={item.id} className={`transition-colors hover:bg-primary/5 ${isEditing ? "bg-primary/10" : ""}`}>
                     <td className={`${tdClass} text-center text-muted-foreground text-xs`}>
@@ -445,6 +813,34 @@ export default function SettlementList() {
                         <StatusBadge value={item.settlementStatus ?? ""} />
                       )}
                     </td>
+                    {/* 转账状态 - 只读显示 */}
+                    <td className={`${tdClass} text-center`}>
+                      <StatusBadge value={transferStatus} />
+                    </td>
+                    {/* 转账查询 */}
+                    <td className={`${tdClass} text-center`}>
+                      {transferStatus === "已转" ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-primary hover:text-primary hover:bg-primary/10"
+                              onClick={() => {
+                                setViewTransferId(item.id);
+                                setViewTransferOrderNo(item.orderNo || "");
+                              }}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>查看转账记录</TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <span className="text-muted-foreground/40 text-xs">-</span>
+                      )}
+                    </td>
+                    {/* 特殊单 */}
                     <td className={`${tdClass} text-center`}>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -461,6 +857,7 @@ export default function SettlementList() {
                         <TooltipContent>{item.isSpecial ? "点击取消特殊单" : "点击标记为特殊单"}</TooltipContent>
                       </Tooltip>
                     </td>
+                    {/* 操作 */}
                     <td className={`${tdClass} text-center`}>
                       {isEditing ? (
                         <div className="flex items-center justify-center gap-1">
@@ -564,6 +961,25 @@ export default function SettlementList() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Transfer Register Dialog */}
+      <TransferRegisterDialog
+        open={showTransferRegister}
+        onOpenChange={setShowTransferRegister}
+      />
+
+      {/* Transfer View Dialog */}
+      <TransferViewDialog
+        open={viewTransferId !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setViewTransferId(null);
+            setViewTransferOrderNo("");
+          }
+        }}
+        settlementId={viewTransferId ?? 0}
+        orderNo={viewTransferOrderNo}
+      />
     </div>
   );
 }

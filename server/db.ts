@@ -1,6 +1,6 @@
-import { eq, like, and, desc, sql, SQL } from "drizzle-orm";
+import { eq, like, and, desc, sql, SQL, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, settlements, InsertSettlement, Settlement } from "../drizzle/schema";
+import { InsertUser, users, settlements, InsertSettlement, Settlement, transferRecords, transferSettlements } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -190,6 +190,78 @@ export async function toggleSpecial(id: number, isSpecial: boolean) {
 
   await db.update(settlements).set({ isSpecial }).where(eq(settlements.id, id));
   return getSettlementById(id);
+}
+
+// ==================== Transfer Record CRUD ====================
+
+export async function createTransferRecord(data: {
+  settlementIds: number[];
+  imageData: string;
+  note?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // 1. Create transfer record
+  const result = await db.insert(transferRecords).values({
+    imageData: data.imageData,
+    note: data.note || "",
+  });
+  const transferId = result[0].insertId;
+
+  // 2. Create associations
+  if (data.settlementIds.length > 0) {
+    await db.insert(transferSettlements).values(
+      data.settlementIds.map((sid) => ({ transferId, settlementId: sid }))
+    );
+  }
+
+  // 3. Update settlement transferStatus to "已转"
+  if (data.settlementIds.length > 0) {
+    await db
+      .update(settlements)
+      .set({ transferStatus: "已转" })
+      .where(inArray(settlements.id, data.settlementIds));
+  }
+
+  return { id: transferId, settlementIds: data.settlementIds };
+}
+
+export async function getTransferRecordsBySettlementId(settlementId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // Find all transfer records associated with this settlement
+  const associations = await db
+    .select()
+    .from(transferSettlements)
+    .where(eq(transferSettlements.settlementId, settlementId));
+
+  if (associations.length === 0) return [];
+
+  const transferIds = associations.map((a) => a.transferId);
+  const records = await db
+    .select()
+    .from(transferRecords)
+    .where(inArray(transferRecords.id, transferIds))
+    .orderBy(desc(transferRecords.createdAt));
+
+  return records;
+}
+
+export async function getUntransferredSettlements() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const items = await db
+    .select()
+    .from(settlements)
+    .where(
+      sql`(${settlements.transferStatus} = '' OR ${settlements.transferStatus} = '未转' OR ${settlements.transferStatus} IS NULL)`
+    )
+    .orderBy(desc(settlements.id));
+
+  return items;
 }
 
 export async function getDistinctStatuses() {

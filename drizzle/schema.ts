@@ -57,3 +57,31 @@ export const settlements = mysqlTable("settlements", {
 
 export type Settlement = typeof settlements.$inferSelect;
 export type InsertSettlement = typeof settlements.$inferInsert;
+
+/**
+ * 转账记录表（一次转账可关联多个订单）
+ */
+export const transferRecords = mysqlTable("transfer_records", {
+  id: int("id").autoincrement().primaryKey(),
+  /** 转账截图（base64 或 URL） */
+  imageData: text("imageData"),
+  /** 转账备注 */
+  note: text("note"),
+  /** 创建时间 */
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type TransferRecord = typeof transferRecords.$inferSelect;
+export type InsertTransferRecord = typeof transferRecords.$inferInsert;
+
+/**
+ * 转账记录与订单的关联表（多对多）
+ */
+export const transferSettlements = mysqlTable("transfer_settlements", {
+  id: int("id").autoincrement().primaryKey(),
+  transferId: int("transferId").notNull(),
+  settlementId: int("settlementId").notNull(),
+});
+
+export type TransferSettlement = typeof transferSettlements.$inferSelect;
+export type InsertTransferSettlement = typeof transferSettlements.$inferInsert;

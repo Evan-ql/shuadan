@@ -16,6 +16,9 @@ import {
   upsertUser,
   getUserByOpenId,
   toggleSpecial,
+  createTransferRecord,
+  getTransferRecordsBySettlementId,
+  getUntransferredSettlements,
 } from "./db";
 
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin";
@@ -147,6 +150,33 @@ export const appRouter = router({
 
     statuses: protectedProcedure.query(async () => {
       return getDistinctStatuses();
+    }),
+  }),
+
+  transfer: router({
+    // 创建转账记录（批量标记已转账 + 上传截图）
+    create: protectedProcedure
+      .input(
+        z.object({
+          settlementIds: z.array(z.number()).min(1, "请至少选择一个订单"),
+          imageData: z.string().min(1, "请上传转账截图"),
+          note: z.string().optional().default(""),
+        })
+      )
+      .mutation(async ({ input }) => {
+        return createTransferRecord(input);
+      }),
+
+    // 查询某个订单的转账记录
+    getBySettlement: protectedProcedure
+      .input(z.object({ settlementId: z.number() }))
+      .query(async ({ input }) => {
+        return getTransferRecordsBySettlementId(input.settlementId);
+      }),
+
+    // 获取所有未转账的订单
+    untransferred: protectedProcedure.query(async () => {
+      return getUntransferredSettlements();
     }),
   }),
 });
