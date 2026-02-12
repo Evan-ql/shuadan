@@ -2,7 +2,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState, useEffect } from "react";
-import { toast } from "sonner";
 
 export interface SettlementFormData {
   orderDate: number | null;
@@ -58,11 +57,6 @@ export default function SettlementForm({
     remark: initialData?.remark ?? "",
   });
 
-  // 记录哪些必填字段被触碰过（用于显示错误提示）
-  const [touched, setTouched] = useState<Record<string, boolean>>({});
-  // 是否尝试过提交（提交后所有必填字段都显示错误）
-  const [submitted, setSubmitted] = useState(false);
-
   useEffect(() => {
     if (initialData) {
       setForm({
@@ -82,26 +76,8 @@ export default function SettlementForm({
     }
   }, [initialData]);
 
-  // 必填项验证
-  const errors: Record<string, string> = {};
-  if (!form.orderDate) errors.orderDate = "请选择接单日期";
-  if (!form.groupName.trim()) errors.groupName = "请输入群名";
-  if (!form.originalPrice || form.originalPrice === "0" || form.originalPrice === "0.00") {
-    errors.originalPrice = "请输入原价";
-  }
-
-  const showError = (field: string) => (submitted || touched[field]) && errors[field];
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
-
-    if (Object.keys(errors).length > 0) {
-      const errorMessages = Object.values(errors);
-      toast.error(errorMessages[0]);
-      return;
-    }
-
     onSubmit(form);
   };
 
@@ -112,19 +88,13 @@ export default function SettlementForm({
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleBlur = (field: string) => {
-    setTouched((prev) => ({ ...prev, [field]: true }));
-  };
-
-  const requiredMark = <span className="text-destructive ml-0.5">*</span>;
-
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Row 1: Date + Order No + Group Name + Customer Name + Customer Service */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="space-y-2">
           <Label className="text-xs font-heading tracking-wider uppercase text-muted-foreground">
-            接单日期{requiredMark}
+            接单日期
           </Label>
           <Input
             type="datetime-local"
@@ -133,12 +103,8 @@ export default function SettlementForm({
               const val = e.target.value;
               updateField("orderDate", val ? new Date(val).getTime() : null);
             }}
-            onBlur={() => handleBlur("orderDate")}
-            className={`bg-input/50 border-border font-mono text-sm ${showError("orderDate") ? "border-destructive" : ""}`}
+            className="bg-input/50 border-border font-mono text-sm"
           />
-          {showError("orderDate") && (
-            <p className="text-[11px] text-destructive">{errors.orderDate}</p>
-          )}
         </div>
         <div className="space-y-2">
           <Label className="text-xs font-heading tracking-wider uppercase text-muted-foreground">
@@ -153,18 +119,14 @@ export default function SettlementForm({
         </div>
         <div className="space-y-2">
           <Label className="text-xs font-heading tracking-wider uppercase text-muted-foreground">
-            群名{requiredMark}
+            群名
           </Label>
           <Input
             value={form.groupName}
             onChange={(e) => updateField("groupName", e.target.value)}
-            onBlur={() => handleBlur("groupName")}
             placeholder="输入群名"
-            className={`bg-input/50 border-border text-sm ${showError("groupName") ? "border-destructive" : ""}`}
+            className="bg-input/50 border-border text-sm"
           />
-          {showError("groupName") && (
-            <p className="text-[11px] text-destructive">{errors.groupName}</p>
-          )}
         </div>
         <div className="space-y-2">
           <Label className="text-xs font-heading tracking-wider uppercase text-muted-foreground">
@@ -194,19 +156,15 @@ export default function SettlementForm({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label className="text-xs font-heading tracking-wider uppercase text-muted-foreground">
-            原价{requiredMark}
+            原价
           </Label>
           <Input
             type="number"
             step="0.01"
             value={form.originalPrice}
             onChange={(e) => updateField("originalPrice", e.target.value)}
-            onBlur={() => handleBlur("originalPrice")}
-            className={`bg-input/50 border-border font-mono text-sm ${showError("originalPrice") ? "border-destructive" : ""}`}
+            className="bg-input/50 border-border font-mono text-sm"
           />
-          {showError("originalPrice") && (
-            <p className="text-[11px] text-destructive">{errors.originalPrice}</p>
-          )}
         </div>
         <div className="space-y-2">
           <Label className="text-xs font-heading tracking-wider uppercase text-muted-foreground">
