@@ -44,89 +44,89 @@
   --font-heading: "Orbitron", "Inter", sans-serif;
 }
 
-/* Blueprint dark theme - Royal Blue */
+/* Glassmorphism Dark Theme */
 :root {
-  --radius: 0.375rem;
-  /* Deep royal blue background */
-  --background: oklch(0.18 0.06 260);
+  --radius: 0.625rem;
+  /* Deep dark background with subtle blue tint */
+  --background: oklch(0.12 0.03 260);
   --foreground: oklch(0.95 0.01 240);
-  /* Card: slightly lighter blue */
-  --card: oklch(0.22 0.055 258);
+  /* Card: translucent glass */
+  --card: oklch(0.18 0.04 258 / 60%);
   --card-foreground: oklch(0.95 0.01 240);
-  /* Popover */
-  --popover: oklch(0.20 0.058 259);
+  /* Popover: glass panel */
+  --popover: oklch(0.16 0.04 259 / 80%);
   --popover-foreground: oklch(0.95 0.01 240);
-  /* Primary: bright cyan-blue accent */
-  --primary: oklch(0.75 0.15 220);
-  --primary-foreground: oklch(0.15 0.05 260);
+  /* Primary: vibrant cyan accent */
+  --primary: oklch(0.78 0.16 210);
+  --primary-foreground: oklch(0.12 0.04 260);
   /* Secondary */
-  --secondary: oklch(0.25 0.05 258);
+  --secondary: oklch(0.22 0.04 258 / 50%);
   --secondary-foreground: oklch(0.88 0.03 220);
   /* Muted */
-  --muted: oklch(0.24 0.04 260);
-  --muted-foreground: oklch(0.65 0.04 240);
+  --muted: oklch(0.20 0.03 260 / 40%);
+  --muted-foreground: oklch(0.62 0.04 240);
   /* Accent */
-  --accent: oklch(0.28 0.06 255);
+  --accent: oklch(0.24 0.05 255 / 40%);
   --accent-foreground: oklch(0.95 0.01 240);
   /* Destructive */
   --destructive: oklch(0.65 0.2 25);
   --destructive-foreground: oklch(0.98 0 0);
-  /* Border: subtle grid lines */
-  --border: oklch(0.35 0.06 250 / 50%);
-  --input: oklch(0.30 0.05 258);
-  --ring: oklch(0.70 0.15 220);
+  /* Border: glass edge */
+  --border: oklch(0.50 0.06 240 / 20%);
+  --input: oklch(0.20 0.04 258 / 50%);
+  --ring: oklch(0.78 0.16 210);
   /* Charts */
-  --chart-1: oklch(0.75 0.15 220);
-  --chart-2: oklch(0.65 0.12 200);
-  --chart-3: oklch(0.55 0.10 240);
-  --chart-4: oklch(0.70 0.18 180);
-  --chart-5: oklch(0.60 0.08 260);
-  /* Sidebar: darker blue */
-  --sidebar: oklch(0.15 0.065 262);
+  --chart-1: oklch(0.78 0.16 210);
+  --chart-2: oklch(0.70 0.14 190);
+  --chart-3: oklch(0.60 0.12 240);
+  --chart-4: oklch(0.72 0.18 170);
+  --chart-5: oklch(0.65 0.10 260);
+  /* Sidebar: frosted glass */
+  --sidebar: oklch(0.10 0.04 262 / 80%);
   --sidebar-foreground: oklch(0.90 0.02 240);
-  --sidebar-primary: oklch(0.75 0.15 220);
-  --sidebar-primary-foreground: oklch(0.15 0.05 260);
-  --sidebar-accent: oklch(0.22 0.06 258);
+  --sidebar-primary: oklch(0.78 0.16 210);
+  --sidebar-primary-foreground: oklch(0.12 0.04 260);
+  --sidebar-accent: oklch(0.20 0.05 258 / 50%);
   --sidebar-accent-foreground: oklch(0.95 0.01 240);
-  --sidebar-border: oklch(0.35 0.06 250 / 40%);
-  --sidebar-ring: oklch(0.70 0.15 220);
+  --sidebar-border: oklch(0.50 0.06 240 / 15%);
+  --sidebar-ring: oklch(0.78 0.16 210);
 }
 
 /* Also define .dark for ThemeProvider compatibility */
 .dark {
-  --radius: 0.375rem;
-  --background: oklch(0.18 0.06 260);
+  --radius: 0.625rem;
+  --background: oklch(0.12 0.03 260);
   --foreground: oklch(0.95 0.01 240);
-  --card: oklch(0.22 0.055 258);
+  --card: oklch(0.18 0.04 258 / 60%);
   --card-foreground: oklch(0.95 0.01 240);
-  --popover: oklch(0.20 0.058 259);
+  --popover: oklch(0.16 0.04 259 / 80%);
   --popover-foreground: oklch(0.95 0.01 240);
-  --primary: oklch(0.75 0.15 220);
-  --primary-foreground: oklch(0.15 0.05 260);
-  --secondary: oklch(0.25 0.05 258);
+  --primary: oklch(0.78 0.16 210);
+  --primary-foreground: oklch(0.12 0.04 260);
+  --secondary: oklch(0.22 0.04 258 / 50%);
   --secondary-foreground: oklch(0.88 0.03 220);
-  --muted: oklch(0.24 0.04 260);
-  --muted-foreground: oklch(0.65 0.04 240);
-  --accent: oklch(0.28 0.06 255);
+  --muted: oklch(0.20 0.03 260 / 40%);
+  --muted-foreground: oklch(0.62 0.04 240);
+  --accent: oklch(0.24 0.05 255 / 40%);
   --accent-foreground: oklch(0.95 0.01 240);
   --destructive: oklch(0.65 0.2 25);
   --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.35 0.06 250 / 50%);
-  --input: oklch(0.30 0.05 258);
-  --ring: oklch(0.70 0.15 220);
-  --chart-1: oklch(0.75 0.15 220);
-  --chart-2: oklch(0.65 0.12 200);
-  --chart-3: oklch(0.55 0.10 240);
-  --chart-4: oklch(0.70 0.18 180);
-  --chart-5: oklch(0.60 0.08 260);
-  --sidebar: oklch(0.15 0.065 262);
+  --border: oklch(0.50 0.06 240 / 20%);
+  --input: oklch(0.20 0.04 258 / 50%);
+  --ring: oklch(0.78 0.16 210);
+  --chart-1: oklch(0.78 0.16 210);
+  --chart-2: oklch(0.70 0.14 190);
+  --chart-3: oklch(0.60 0.12 240);
+  --chart-4: oklch(0.72 0.18 170);
+  --chart-5: oklch(0.65 0.10 260);
+  --sidebar: oklch(0.10 0.04 262 / 80%);
   --sidebar-foreground: oklch(0.90 0.02 240);
-  --sidebar-primary: oklch(0.75 0.15 220);
-  --sidebar-primary-foreground: oklch(0.15 0.05 260);
-  --sidebar-accent: oklch(0.22 0.06 258);
+  --sidebar-primary: oklch(0.78 0.16 210);
+  --sidebar-primary-foreground: oklch(0.12 0.04 260);
+  --sidebar-accent: oklch(0.20 0.05 258 / 50%);
   --sidebar-accent-foreground: oklch(0.95 0.01 240);
-  --sidebar-border: oklch(0.35 0.06 250 / 40%);
-  --sidebar-ring: oklch(0.70 0.15 220);
+  --sidebar-border: oklch(0.50 0.06 240 / 15%);
+  --sidebar-ring: oklch(0.78 0.16 210);
 }
 
 @layer base {
@@ -135,6 +135,11 @@
   }
   body {
     @apply bg-background text-foreground;
+    background-image:
+      radial-gradient(ellipse at 20% 20%, oklch(0.25 0.10 240 / 25%) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 80%, oklch(0.20 0.08 280 / 20%) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 50%, oklch(0.15 0.06 200 / 15%) 0%, transparent 60%);
+    background-attachment: fixed;
   }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
@@ -178,14 +183,153 @@
     }
   }
 
-  /* Blueprint grid background pattern */
+  /* ========== Glassmorphism Components ========== */
+
+  /* Glass card - primary glass effect */
+  .glass-card {
+    background: oklch(0.18 0.04 258 / 45%);
+    backdrop-filter: blur(20px) saturate(1.2);
+    -webkit-backdrop-filter: blur(20px) saturate(1.2);
+    border: 1px solid oklch(0.60 0.08 230 / 15%);
+    box-shadow:
+      0 8px 32px oklch(0 0 0 / 20%),
+      inset 0 1px 0 oklch(1 0 0 / 5%);
+  }
+
+  /* Glass card hover effect */
+  .glass-card-hover {
+    background: oklch(0.18 0.04 258 / 45%);
+    backdrop-filter: blur(20px) saturate(1.2);
+    -webkit-backdrop-filter: blur(20px) saturate(1.2);
+    border: 1px solid oklch(0.60 0.08 230 / 15%);
+    box-shadow:
+      0 8px 32px oklch(0 0 0 / 20%),
+      inset 0 1px 0 oklch(1 0 0 / 5%);
+    transition: all 0.3s ease;
+  }
+  .glass-card-hover:hover {
+    background: oklch(0.20 0.05 258 / 55%);
+    border-color: oklch(0.70 0.12 210 / 25%);
+    box-shadow:
+      0 12px 40px oklch(0 0 0 / 25%),
+      0 0 20px oklch(0.78 0.16 210 / 8%),
+      inset 0 1px 0 oklch(1 0 0 / 8%);
+  }
+
+  /* Glass sidebar */
+  .glass-sidebar {
+    background: oklch(0.10 0.04 262 / 70%);
+    backdrop-filter: blur(24px) saturate(1.3);
+    -webkit-backdrop-filter: blur(24px) saturate(1.3);
+    border-right: 1px solid oklch(0.50 0.06 240 / 12%);
+  }
+
+  /* Glass table */
+  .glass-table {
+    background: oklch(0.15 0.035 258 / 40%);
+    backdrop-filter: blur(16px) saturate(1.15);
+    -webkit-backdrop-filter: blur(16px) saturate(1.15);
+    border: 1px solid oklch(0.55 0.07 235 / 12%);
+    border-radius: 0.75rem;
+    overflow: hidden;
+    box-shadow: 0 4px 24px oklch(0 0 0 / 15%);
+  }
+
+  .glass-table thead {
+    background: oklch(0.14 0.04 260 / 60%);
+    backdrop-filter: blur(12px);
+  }
+
+  .glass-table thead th {
+    border-bottom: 1px solid oklch(0.60 0.08 230 / 15%);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+  .glass-table tbody tr {
+    border-bottom: 1px solid oklch(0.50 0.06 240 / 8%);
+    transition: background 0.2s ease;
+  }
+
+  .glass-table tbody tr:hover {
+    background: oklch(0.22 0.05 255 / 30%);
+  }
+
+  .glass-table tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  /* Glass input */
+  .glass-input {
+    background: oklch(0.16 0.035 258 / 50%);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid oklch(0.55 0.07 235 / 18%);
+    transition: all 0.2s ease;
+  }
+  .glass-input:focus {
+    border-color: oklch(0.78 0.16 210 / 50%);
+    box-shadow: 0 0 0 3px oklch(0.78 0.16 210 / 10%), 0 0 16px oklch(0.78 0.16 210 / 8%);
+  }
+
+  /* Glass button */
+  .glass-btn {
+    background: oklch(0.22 0.05 258 / 50%);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid oklch(0.60 0.08 230 / 20%);
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px oklch(0 0 0 / 10%);
+  }
+  .glass-btn:hover {
+    background: oklch(0.26 0.06 255 / 60%);
+    border-color: oklch(0.70 0.12 210 / 30%);
+    box-shadow: 0 4px 16px oklch(0 0 0 / 15%), 0 0 12px oklch(0.78 0.16 210 / 6%);
+  }
+
+  /* Glass badge / tag */
+  .glass-badge {
+    background: oklch(0.20 0.04 258 / 40%);
+    backdrop-filter: blur(8px);
+    border: 1px solid oklch(0.55 0.07 235 / 15%);
+    border-radius: 9999px;
+    padding: 0.125rem 0.625rem;
+    font-size: 0.75rem;
+  }
+
+  /* Glow effect for primary elements */
+  .glow-primary {
+    box-shadow: 0 0 20px oklch(0.78 0.16 210 / 15%), 0 0 40px oklch(0.78 0.16 210 / 5%);
+  }
+
+  /* Subtle animated gradient border */
+  .glass-border-glow {
+    position: relative;
+  }
+  .glass-border-glow::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      135deg,
+      oklch(0.78 0.16 210 / 30%),
+      oklch(0.60 0.12 260 / 10%),
+      oklch(0.78 0.16 210 / 20%)
+    );
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* Keep blueprint grid as subtle background pattern */
   .blueprint-grid {
     background-image:
-      linear-gradient(oklch(0.40 0.08 250 / 15%) 1px, transparent 1px),
-      linear-gradient(90deg, oklch(0.40 0.08 250 / 15%) 1px, transparent 1px),
       linear-gradient(oklch(0.40 0.08 250 / 8%) 1px, transparent 1px),
       linear-gradient(90deg, oklch(0.40 0.08 250 / 8%) 1px, transparent 1px);
-    background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
+    background-size: 40px 40px;
   }
 
   /* Blueprint dimension markers */
@@ -196,7 +340,7 @@
   .blueprint-corner::after {
     content: '';
     position: absolute;
-    border-color: oklch(0.60 0.12 220 / 40%);
+    border-color: oklch(0.60 0.12 220 / 30%);
     border-style: solid;
     width: 12px;
     height: 12px;
@@ -212,11 +356,15 @@
     border-width: 0 1px 1px 0;
   }
 
-  /* Blueprint card style */
+  /* Blueprint card style - now with glass effect */
   .blueprint-card {
-    border: 1px solid oklch(0.45 0.10 240 / 30%);
-    background: oklch(0.20 0.055 259 / 80%);
-    backdrop-filter: blur(8px);
+    border: 1px solid oklch(0.55 0.08 235 / 20%);
+    background: oklch(0.16 0.04 259 / 55%);
+    backdrop-filter: blur(20px) saturate(1.2);
+    -webkit-backdrop-filter: blur(20px) saturate(1.2);
+    box-shadow:
+      0 8px 32px oklch(0 0 0 / 20%),
+      inset 0 1px 0 oklch(1 0 0 / 5%);
   }
 
   /* Technical line accent */
@@ -230,6 +378,22 @@
     left: 0;
     right: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, oklch(0.70 0.15 220 / 60%), transparent);
+    background: linear-gradient(90deg, transparent, oklch(0.78 0.16 210 / 40%), transparent);
+  }
+
+  /* Scrollbar styling for glass theme */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: oklch(0.40 0.06 250 / 30%);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.50 0.08 240 / 40%);
   }
 }

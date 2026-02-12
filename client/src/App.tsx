@@ -9,6 +9,7 @@ import SettlementList from "./pages/SettlementList";
 import SpecialList from "./pages/SpecialList";
 import CreateSettlement from "./pages/CreateSettlement";
 import EditSettlement from "./pages/EditSettlement";
+import BackupPage from "./pages/BackupPage";
 
 function Router() {
   return (
@@ -18,6 +19,7 @@ function Router() {
         <Route path="/special" component={SpecialList} />
         <Route path="/create" component={CreateSettlement} />
         <Route path="/edit/:id" component={EditSettlement} />
+        <Route path="/backup" component={BackupPage} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>

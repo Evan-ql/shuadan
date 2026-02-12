@@ -19,7 +19,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/useMobile";
-import { ClipboardList, LogOut, PanelLeft, PlusCircle, LayoutGrid, Loader2, Star } from "lucide-react";
+import { ClipboardList, LogOut, PanelLeft, PlusCircle, LayoutGrid, Loader2, Star, Database } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
@@ -33,6 +33,7 @@ const menuItems = [
   { icon: LayoutGrid, label: "结算明细", path: "/" },
   { icon: Star, label: "特殊单明细", path: "/special" },
   { icon: PlusCircle, label: "新增记录", path: "/create" },
+  { icon: Database, label: "数据备份", path: "/backup" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -229,10 +230,10 @@ function DashboardLayoutContent({
       <div className="relative" ref={sidebarRef}>
         <Sidebar
           collapsible="icon"
-          className="border-r border-border/50"
+          className="border-r border-border/50 glass-sidebar"
           disableTransition={isResizing}
         >
-          <SidebarHeader className="h-16 justify-center border-b border-border/30">
+          <SidebarHeader className="h-16 justify-center border-b border-border/20">
             <div className="flex items-center gap-3 px-2 transition-all w-full">
               <button
                 onClick={toggleSidebar}
@@ -261,7 +262,7 @@ function DashboardLayoutContent({
                       isActive={isActive}
                       onClick={() => setLocation(item.path)}
                       tooltip={item.label}
-                      className={`h-10 transition-all font-normal ${isActive ? "border border-primary/30 bg-primary/10" : ""}`}
+                      className={`h-10 transition-all font-normal rounded-lg ${isActive ? "border border-primary/25 bg-primary/10 backdrop-blur-sm glow-primary" : "hover:bg-white/5"}`}
                     >
                       <item.icon
                         className={`h-4 w-4 ${isActive ? "text-primary" : "text-muted-foreground"}`}
@@ -276,7 +277,7 @@ function DashboardLayoutContent({
             </SidebarMenu>
           </SidebarContent>
 
-          <SidebarFooter className="p-3 border-t border-border/30">
+          <SidebarFooter className="p-3 border-t border-border/20">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-3 rounded px-1 py-1 hover:bg-accent/50 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -330,7 +331,7 @@ function DashboardLayoutContent({
             </div>
           </div>
         )}
-        <main className="flex-1 p-4 blueprint-grid min-h-screen">
+        <main className="flex-1 p-4 min-h-screen">
           {children}
         </main>
       </SidebarInset>

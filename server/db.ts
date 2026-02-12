@@ -264,6 +264,86 @@ export async function getUntransferredSettlements() {
   return items;
 }
 
+// ==================== Backup & Restore ====================
+
+export async function exportAllData() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const [allSettlements, allTransferRecords, allTransferSettlements] = await Promise.all([
+    db.select().from(settlements).orderBy(desc(settlements.id)),
+    db.select().from(transferRecords).orderBy(desc(transferRecords.id)),
+    db.select().from(transferSettlements),
+  ]);
+
+  return {
+    version: "1.0",
+    exportedAt: new Date().toISOString(),
+    data: {
+      settlements: allSettlements,
+      transferRecords: allTransferRecords,
+      transferSettlements: allTransferSettlements,
+    },
+  };
+}
+
+export async function importAllData(backupData: {
+  data: {
+    settlements: any[];
+    transferRecords: any[];
+    transferSettlements: any[];
+  };
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const stats = { settlements: 0, transferRecords: 0, transferSettlements: 0 };
+
+  // Clear existing data (in reverse dependency order)
+  await db.delete(transferSettlements);
+  await db.delete(transferRecords);
+  await db.delete(settlements);
+
+  // Import settlements
+  if (backupData.data.settlements && backupData.data.settlements.length > 0) {
+    for (const item of backupData.data.settlements) {
+      // Convert date strings back to Date objects
+      if (item.orderDate && typeof item.orderDate === 'string') {
+        item.orderDate = new Date(item.orderDate);
+      }
+      if (item.createdAt && typeof item.createdAt === 'string') {
+        item.createdAt = new Date(item.createdAt);
+      }
+      if (item.updatedAt && typeof item.updatedAt === 'string') {
+        item.updatedAt = new Date(item.updatedAt);
+      }
+      await db.insert(settlements).values(item);
+      stats.settlements++;
+    }
+  }
+
+  // Import transfer records
+  if (backupData.data.transferRecords && backupData.data.transferRecords.length > 0) {
+    for (const item of backupData.data.transferRecords) {
+      if (item.createdAt && typeof item.createdAt === 'string') {
+        item.createdAt = new Date(item.createdAt);
+      }
+      await db.insert(transferRecords).values(item);
+      stats.transferRecords++;
+    }
+  }
+
+  // Import transfer-settlement associations
+  if (backupData.data.transferSettlements && backupData.data.transferSettlements.length > 0) {
+    for (const item of backupData.data.transferSettlements) {
+      await db.insert(transferSettlements).values(item);
+      stats.transferSettlements++;
+    }
+  }
+
+  return stats;
+}
+
 export async function getDistinctStatuses() {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

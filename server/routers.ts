@@ -19,6 +19,8 @@ import {
   createTransferRecord,
   getTransferRecordsBySettlementId,
   getUntransferredSettlements,
+  exportAllData,
+  importAllData,
 } from "./db";
 
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin";
@@ -152,6 +154,28 @@ export const appRouter = router({
     statuses: protectedProcedure.query(async () => {
       return getDistinctStatuses();
     }),
+  }),
+
+  backup: router({
+    // 导出所有数据
+    export: protectedProcedure.query(async () => {
+      return exportAllData();
+    }),
+
+    // 导入备份数据
+    import: protectedProcedure
+      .input(
+        z.object({
+          data: z.object({
+            settlements: z.array(z.any()),
+            transferRecords: z.array(z.any()),
+            transferSettlements: z.array(z.any()),
+          }),
+        })
+      )
+      .mutation(async ({ input }) => {
+        return importAllData(input);
+      }),
   }),
 
   transfer: router({
