@@ -171,7 +171,7 @@ class SDKServer {
     return this.signSession(
       {
         openId,
-        appId: ENV.appId,
+        appId: ENV.appId || "settlement-system",
         name: options.name || "",
       },
       options
@@ -214,16 +214,15 @@ class SDKServer {
 
       if (
         !isNonEmptyString(openId) ||
-        !isNonEmptyString(appId) ||
         !isNonEmptyString(name)
       ) {
-        console.warn("[Auth] Session payload missing required fields");
+        console.warn("[Auth] Session payload missing required fields (openId or name)");
         return null;
       }
 
       return {
         openId,
-        appId,
+        appId: (appId as string) || "settlement-system",
         name,
       };
     } catch (error) {
