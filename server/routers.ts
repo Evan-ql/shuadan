@@ -45,6 +45,24 @@ const settlementInput = z.object({
   remark: z.string().optional().default(""),
 });
 
+// 更新用的 schema：不带 default 值，未传的字段保持 undefined，不会覆盖数据库中的值
+const settlementUpdateInput = z.object({
+  orderDate: z.number().nullable().optional(),
+  orderNo: z.string().optional(),
+  groupName: z.string().optional(),
+  customerName: z.string().optional(),
+  customerService: z.string().optional(),
+  originalPrice: z.string().optional(),
+  totalPrice: z.string().optional(),
+  shouldTransfer: z.string().optional(),
+  actualTransfer: z.string().optional(),
+  transferStatus: z.string().optional(),
+  registrationStatus: z.string().optional(),
+  settlementStatus: z.string().optional(),
+  isSpecial: z.boolean().optional(),
+  remark: z.string().optional(),
+});
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -134,11 +152,15 @@ export const appRouter = router({
       .input(
         z.object({
           id: z.number(),
-          data: settlementInput.partial(),
+          data: settlementUpdateInput,
         })
       )
       .mutation(async ({ input }) => {
-        return updateSettlement(input.id, input.data);
+        // 过滤掉 undefined 的字段，只更新实际传递的字段
+        const cleanData = Object.fromEntries(
+          Object.entries(input.data).filter(([_, v]) => v !== undefined)
+        );
+        return updateSettlement(input.id, cleanData);
       }),
 
     delete: protectedProcedure
