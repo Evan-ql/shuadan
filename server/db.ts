@@ -114,6 +114,7 @@ export async function listSettlements(params: {
   transferStatus?: string;
   registrationStatus?: string;
   settlementStatus?: string;
+  isSpecial?: boolean;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -135,6 +136,11 @@ export async function listSettlements(params: {
   }
   if (params.settlementStatus) {
     conditions.push(eq(settlements.settlementStatus, params.settlementStatus));
+  }
+
+  // Filter by isSpecial
+  if (params.isSpecial !== undefined) {
+    conditions.push(eq(settlements.isSpecial, params.isSpecial));
   }
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
@@ -176,6 +182,14 @@ export async function deleteSettlement(id: number) {
 
   await db.delete(settlements).where(eq(settlements.id, id));
   return { success: true };
+}
+
+export async function toggleSpecial(id: number, isSpecial: boolean) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.update(settlements).set({ isSpecial }).where(eq(settlements.id, id));
+  return getSettlementById(id);
 }
 
 export async function getDistinctStatuses() {

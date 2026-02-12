@@ -26,7 +26,6 @@ export interface SettlementFormData {
   remark: string;
 }
 
-const TRANSFER_STATUS_OPTIONS = ["未转", "已转", "部分转"];
 const REGISTRATION_STATUS_OPTIONS = ["未登记", "已登记"];
 const SETTLEMENT_STATUS_OPTIONS = ["未结算", "已结算", "部分结算"];
 
@@ -75,6 +74,7 @@ export default function SettlementForm({
         orderDate: initialData.orderDate ?? null,
         orderNo: initialData.orderNo ?? "",
         groupName: initialData.groupName ?? "",
+        customerName: initialData.customerName ?? "",
         customerService: initialData.customerService ?? "",
         originalPrice: initialData.originalPrice ?? "0",
         totalPrice: initialData.totalPrice ?? "0",
@@ -163,7 +163,7 @@ export default function SettlementForm({
         </div>
       </div>
 
-      {/* Row 2: Prices */}
+      {/* Row 2: Price + Statuses */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="space-y-2">
           <Label className="text-xs font-heading tracking-wider uppercase text-muted-foreground">
@@ -176,57 +176,6 @@ export default function SettlementForm({
             onChange={(e) => updateField("originalPrice", e.target.value)}
             className="bg-input/50 border-border font-mono text-sm"
           />
-        </div>
-        <div className="space-y-2">
-          <Label className="text-xs font-heading tracking-wider uppercase text-muted-foreground">
-            加价后总价
-          </Label>
-          <Input
-            type="number"
-            step="0.01"
-            value={form.totalPrice}
-            onChange={(e) => updateField("totalPrice", e.target.value)}
-            className="bg-input/50 border-border font-mono text-sm"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label className="text-xs font-heading tracking-wider uppercase text-muted-foreground">
-            实际转出
-          </Label>
-          <Input
-            type="number"
-            step="0.01"
-            value={form.actualTransfer}
-            onChange={(e) => updateField("actualTransfer", e.target.value)}
-            className="bg-input/50 border-border font-mono text-sm"
-          />
-        </div>
-      </div>
-
-      {/* Row 3: Statuses */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="space-y-2">
-          <Label className="text-xs font-heading tracking-wider uppercase text-muted-foreground">
-            转账状态
-          </Label>
-          <Select
-            value={form.transferStatus || "placeholder"}
-            onValueChange={(v) => updateField("transferStatus", v === "placeholder" ? "" : v)}
-          >
-            <SelectTrigger className="bg-input/50 border-border text-sm">
-              <SelectValue placeholder="选择状态" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="placeholder" className="text-muted-foreground">
-                选择状态
-              </SelectItem>
-              {TRANSFER_STATUS_OPTIONS.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {s}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
         <div className="space-y-2">
           <Label className="text-xs font-heading tracking-wider uppercase text-muted-foreground">
@@ -276,7 +225,7 @@ export default function SettlementForm({
         </div>
       </div>
 
-      {/* Row 4: Remark */}
+      {/* Row 3: Remark */}
       <div className="space-y-2">
         <Label className="text-xs font-heading tracking-wider uppercase text-muted-foreground">
           备注

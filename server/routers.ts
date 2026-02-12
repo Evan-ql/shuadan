@@ -15,6 +15,7 @@ import {
   getDistinctStatuses,
   upsertUser,
   getUserByOpenId,
+  toggleSpecial,
 } from "./db";
 
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin";
@@ -24,14 +25,15 @@ const settlementInput = z.object({
   orderDate: z.number().nullable().optional(),
   orderNo: z.string().optional().default(""),
   groupName: z.string().optional().default(""),
-  customerService: z.string().optional().default(""),
   customerName: z.string().optional().default(""),
+  customerService: z.string().optional().default(""),
   originalPrice: z.string().optional().default("0"),
   totalPrice: z.string().optional().default("0"),
   actualTransfer: z.string().optional().default("0"),
   transferStatus: z.string().optional().default(""),
   registrationStatus: z.string().optional().default(""),
   settlementStatus: z.string().optional().default(""),
+  isSpecial: z.boolean().optional().default(false),
   remark: z.string().optional().default(""),
 });
 
@@ -107,6 +109,7 @@ export const appRouter = router({
           transferStatus: z.string().optional(),
           registrationStatus: z.string().optional(),
           settlementStatus: z.string().optional(),
+          isSpecial: z.boolean().optional(),
         })
       )
       .query(async ({ input }) => {
@@ -134,6 +137,12 @@ export const appRouter = router({
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
         return deleteSettlement(input.id);
+      }),
+
+    toggleSpecial: protectedProcedure
+      .input(z.object({ id: z.number(), isSpecial: z.boolean() }))
+      .mutation(async ({ input }) => {
+        return toggleSpecial(input.id, input.isSpecial);
       }),
 
     statuses: protectedProcedure.query(async () => {

@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, decimal, bigint } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, decimal, bigint, boolean } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -19,7 +19,7 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
 /**
- * 加价结算明细表
+ * 结算明细表（同时标记是否为特殊单）
  */
 export const settlements = mysqlTable("settlements", {
   id: int("id").autoincrement().primaryKey(),
@@ -29,10 +29,10 @@ export const settlements = mysqlTable("settlements", {
   orderNo: varchar("orderNo", { length: 64 }),
   /** 群名 */
   groupName: varchar("groupName", { length: 128 }),
-  /** 客服 */
-  customerService: varchar("customerService", { length: 64 }).default(""),
   /** 客户名 */
   customerName: varchar("customerName", { length: 128 }).default(""),
+  /** 客服 */
+  customerService: varchar("customerService", { length: 64 }).default(""),
   /** 原价 */
   originalPrice: decimal("originalPrice", { precision: 12, scale: 2 }).default("0"),
   /** 加价后总价 */
@@ -45,6 +45,8 @@ export const settlements = mysqlTable("settlements", {
   registrationStatus: varchar("registrationStatus", { length: 32 }).default(""),
   /** 结算状态 */
   settlementStatus: varchar("settlementStatus", { length: 32 }).default(""),
+  /** 是否为特殊单 */
+  isSpecial: boolean("isSpecial").default(false),
   /** 备注 */
   remark: text("remark"),
   /** 创建人ID */

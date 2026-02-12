@@ -5,7 +5,8 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import DashboardLayout from "./components/DashboardLayout";
-import Home from "./pages/Home";
+import SettlementList from "./pages/SettlementList";
+import SpecialList from "./pages/SpecialList";
 import CreateSettlement from "./pages/CreateSettlement";
 import EditSettlement from "./pages/EditSettlement";
 
@@ -13,7 +14,8 @@ function Router() {
   return (
     <DashboardLayout>
       <Switch>
-        <Route path="/" component={Home} />
+        <Route path="/" component={SettlementList} />
+        <Route path="/special" component={SpecialList} />
         <Route path="/create" component={CreateSettlement} />
         <Route path="/edit/:id" component={EditSettlement} />
         <Route path="/404" component={NotFound} />
