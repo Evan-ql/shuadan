@@ -28,6 +28,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 const menuItems = [
   { icon: LayoutGrid, label: "结算明细", path: "/" },
@@ -178,9 +179,15 @@ function DashboardLayoutContent({
   children,
   setSidebarWidth,
 }: DashboardLayoutContentProps) {
-  // 跳过登录，使用固定用户信息
-  const user = { name: "Evan", email: "admin" };
-  const logout = () => {};
+  const { user, loading, logout } = useAuth();
+
+  // 未登录显示登录页面
+  if (loading) {
+    return <DashboardLayoutSkeleton />;
+  }
+  if (!user) {
+    return <LoginPage />;
+  }
   const [location, setLocation] = useLocation();
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
