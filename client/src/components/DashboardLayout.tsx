@@ -47,6 +47,7 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const { user, loading } = useAuth();
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
@@ -54,6 +55,14 @@ export default function DashboardLayout({
   useEffect(() => {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
   }, [sidebarWidth]);
+
+  // 加载中和未登录时直接返回，不包裹 SidebarProvider
+  if (loading) {
+    return <DashboardLayoutSkeleton />;
+  }
+  if (!user) {
+    return <LoginPage />;
+  }
 
   return (
     <SidebarProvider
@@ -226,13 +235,7 @@ function DashboardLayoutContent({
     };
   }, [isResizing, setSidebarWidth]);
 
-  // ✅ 条件返回放在所有 Hooks 之后
-  if (loading) {
-    return <DashboardLayoutSkeleton />;
-  }
-  if (!user) {
-    return <LoginPage />;
-  }
+  // 登录和加载判断已移到 DashboardLayout 中，此处 user 必定存在
 
   return (
     <>
