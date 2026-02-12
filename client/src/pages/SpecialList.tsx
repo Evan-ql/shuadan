@@ -363,23 +363,11 @@ export default function SpecialList() {
 
   const saveEdit = () => {
     if (editingId === null || !editingItem) return;
-    // 保留所有同步字段的原始值，只更新可编辑字段
+    // 只传递实际需要更新的可编辑字段，其他字段不传，后端会保留原值
     const updateData: Record<string, any> = {
-      // 同步字段（保留原始值，防止被重置）
-      orderDate: editingItem.orderDate,
-      orderNo: editingItem.orderNo || "",
-      groupName: editingItem.groupName || "",
-      customerName: editingItem.customerName || "",
-      customerService: editingItem.customerService || "",
-      originalPrice: editingItem.originalPrice || "0",
-      registrationStatus: editingItem.registrationStatus || "未登记",
-      settlementStatus: editingItem.settlementStatus || "未结算",
-      remark: editingItem.remark || "",
-      // 可编辑字段
       totalPrice: editValues.totalPrice || "0",
       shouldTransfer: editValues.shouldTransfer || "0",
       actualTransfer: editValues.actualTransfer || "0",
-      isSpecial: true,
     };
     updateMutation.mutate({ id: editingId, data: updateData });
   };
