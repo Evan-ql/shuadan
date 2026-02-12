@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS `settlements` (
   `orderNo` varchar(64),
   `groupName` varchar(128),
   `customerService` varchar(64) DEFAULT '',
+  `customerName` varchar(128) DEFAULT '',
   `originalPrice` decimal(12,2) DEFAULT '0.00',
   `totalPrice` decimal(12,2) DEFAULT '0.00',
   `actualTransfer` decimal(12,2) DEFAULT '0.00',

@@ -31,6 +31,8 @@ export const settlements = mysqlTable("settlements", {
   groupName: varchar("groupName", { length: 128 }),
   /** 客服 */
   customerService: varchar("customerService", { length: 64 }).default(""),
+  /** 客户名 */
+  customerName: varchar("customerName", { length: 128 }).default(""),
   /** 原价 */
   originalPrice: decimal("originalPrice", { precision: 12, scale: 2 }).default("0"),
   /** 加价后总价 */

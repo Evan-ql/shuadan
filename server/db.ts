@@ -123,7 +123,7 @@ export async function listSettlements(params: {
   if (params.search) {
     const searchPattern = `%${params.search}%`;
     conditions.push(
-      sql`(${settlements.groupName} LIKE ${searchPattern} OR ${settlements.orderNo} LIKE ${searchPattern})`
+      sql`(${settlements.groupName} LIKE ${searchPattern} OR ${settlements.orderNo} LIKE ${searchPattern} OR ${settlements.customerName} LIKE ${searchPattern})`
     );
   }
 

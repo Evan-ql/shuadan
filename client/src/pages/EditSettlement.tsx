@@ -61,6 +61,7 @@ export default function EditSettlement() {
     orderDate: record.orderDate,
     orderNo: record.orderNo ?? "",
     groupName: record.groupName ?? "",
+    customerName: record.customerName ?? "",
     originalPrice: record.originalPrice ?? "0",
     totalPrice: record.totalPrice ?? "0",
     actualTransfer: record.actualTransfer ?? "0",

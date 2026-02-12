@@ -212,12 +212,14 @@ export default function Home() {
       orderNo: item.orderNo || "",
       groupName: item.groupName || "",
       customerService: item.customerService || "",
+      customerName: item.customerName || "",
       originalPrice: item.originalPrice || "0",
       totalPrice: item.totalPrice || "0",
       actualTransfer: item.actualTransfer || "0",
       transferStatus: item.transferStatus || "",
       registrationStatus: item.registrationStatus || "",
       settlementStatus: item.settlementStatus || "",
+      remark: item.remark || "",
     });
   };
 
@@ -238,12 +240,14 @@ export default function Home() {
     updateData.orderNo = editValues.orderNo || "";
     updateData.groupName = editValues.groupName || "";
     updateData.customerService = editValues.customerService || "";
+    updateData.customerName = editValues.customerName || "";
     updateData.originalPrice = editValues.originalPrice || "0";
     updateData.totalPrice = editValues.totalPrice || "0";
     updateData.actualTransfer = editValues.actualTransfer || "0";
     updateData.transferStatus = editValues.transferStatus || "";
     updateData.registrationStatus = editValues.registrationStatus || "";
     updateData.settlementStatus = editValues.settlementStatus || "";
+    updateData.remark = editValues.remark || "";
 
     updateMutation.mutate({ id: editingId, data: updateData });
   };
@@ -417,6 +421,7 @@ export default function Home() {
                 <th className={thClass}>接单日期</th>
                 <th className={thClass}>单号</th>
                 <th className={thClass}>群名</th>
+                <th className={thClass}>客户名</th>
                 <th className={thClass}>客服</th>
                 <th className={`${thClass} text-right`}>原价</th>
                 <th className={`${thClass} text-right`}>加价后总价</th>
@@ -424,6 +429,7 @@ export default function Home() {
                 <th className={`${thClass} text-center`}>转账状态</th>
                 <th className={`${thClass} text-center`}>登记状态</th>
                 <th className={`${thClass} text-center`}>结算状态</th>
+                <th className={thClass}>备注</th>
                 <th className={`${thClass} text-center w-[100px]`}>操作</th>
               </tr>
             </thead>
@@ -431,7 +437,7 @@ export default function Home() {
               {isLoading ? (
                 Array.from({ length: 8 }).map((_, i) => (
                   <tr key={i}>
-                    {Array.from({ length: 12 }).map((_, j) => (
+                    {Array.from({ length: 14 }).map((_, j) => (
                       <td key={j} className={tdClass}>
                         <Skeleton className="h-4 w-full" />
                       </td>
@@ -441,7 +447,7 @@ export default function Home() {
               ) : data?.items.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={12}
+                    colSpan={14}
                     className={`${tdClass} text-center py-16 text-muted-foreground`}
                   >
                     <div className="flex flex-col items-center gap-3">
@@ -517,6 +523,19 @@ export default function Home() {
                           />
                         ) : (
                           item.groupName || "-"
+                        )}
+                      </td>
+                      <td className={tdClass}>
+                        {isEditing ? (
+                          <EditableCell
+                            value={item.customerName || ""}
+                            field="customerName"
+                            isEditing={true}
+                            editValues={editValues}
+                            onEditChange={onEditChange}
+                          />
+                        ) : (
+                          item.customerName || "-"
                         )}
                       </td>
                       <td className={tdClass}>
@@ -614,6 +633,28 @@ export default function Home() {
                           />
                         ) : (
                           <StatusBadge value={item.settlementStatus ?? ""} />
+                        )}
+                      </td>
+                      <td className={`${tdClass} text-sm`}>
+                        {isEditing ? (
+                          <EditableCell
+                            value={item.remark || ""}
+                            field="remark"
+                            isEditing={true}
+                            editValues={editValues}
+                            onEditChange={onEditChange}
+                          />
+                        ) : (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-sm truncate max-w-[120px] inline-block">
+                                {item.remark || "-"}
+                              </span>
+                            </TooltipTrigger>
+                            {item.remark && (
+                              <TooltipContent>{item.remark}</TooltipContent>
+                            )}
+                          </Tooltip>
                         )}
                       </td>
                       <td className={`${tdClass} text-center`}>

@@ -15,6 +15,7 @@ export interface SettlementFormData {
   orderDate: number | null;
   orderNo: string;
   groupName: string;
+  customerName: string;
   customerService: string;
   originalPrice: string;
   totalPrice: string;
@@ -57,6 +58,7 @@ export default function SettlementForm({
     orderDate: initialData?.orderDate ?? null,
     orderNo: initialData?.orderNo ?? "",
     groupName: initialData?.groupName ?? "",
+    customerName: initialData?.customerName ?? "",
     customerService: initialData?.customerService ?? "",
     originalPrice: initialData?.originalPrice ?? "0",
     totalPrice: initialData?.totalPrice ?? "0",
@@ -99,8 +101,8 @@ export default function SettlementForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Row 1: Date + Order No + Group Name + Customer Service */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* Row 1: Date + Order No + Group Name + Customer Name + Customer Service */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="space-y-2">
           <Label className="text-xs font-heading tracking-wider uppercase text-muted-foreground">
             接单日期
@@ -134,6 +136,17 @@ export default function SettlementForm({
             value={form.groupName}
             onChange={(e) => updateField("groupName", e.target.value)}
             placeholder="输入群名"
+            className="bg-input/50 border-border text-sm"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label className="text-xs font-heading tracking-wider uppercase text-muted-foreground">
+            客户名
+          </Label>
+          <Input
+            value={form.customerName}
+            onChange={(e) => updateField("customerName", e.target.value)}
+            placeholder="输入客户名"
             className="bg-input/50 border-border text-sm"
           />
         </div>

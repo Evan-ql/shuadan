@@ -25,6 +25,7 @@ const settlementInput = z.object({
   orderNo: z.string().optional().default(""),
   groupName: z.string().optional().default(""),
   customerService: z.string().optional().default(""),
+  customerName: z.string().optional().default(""),
   originalPrice: z.string().optional().default("0"),
   totalPrice: z.string().optional().default("0"),
   actualTransfer: z.string().optional().default("0"),
