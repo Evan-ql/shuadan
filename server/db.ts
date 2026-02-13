@@ -202,6 +202,21 @@ export async function createTransferRecord(data: {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
+  // 0. 防重复检查：过滤掉已经有转账记录的订单
+  let filteredIds = data.settlementIds;
+  if (filteredIds.length > 0) {
+    const existingAssociations = await db
+      .select({ settlementId: transferSettlements.settlementId })
+      .from(transferSettlements)
+      .where(inArray(transferSettlements.settlementId, filteredIds));
+    const alreadyTransferred = new Set(existingAssociations.map((a) => a.settlementId));
+    filteredIds = filteredIds.filter((id) => !alreadyTransferred.has(id));
+  }
+
+  if (filteredIds.length === 0) {
+    throw new Error("所选订单已全部完成转账登记，无需重复操作");
+  }
+
   // 1. Create transfer record
   const result = await db.insert(transferRecords).values({
     imageData: data.imageData,
@@ -210,21 +225,18 @@ export async function createTransferRecord(data: {
   const transferId = result[0].insertId;
 
   // 2. Create associations
-  if (data.settlementIds.length > 0) {
-    await db.insert(transferSettlements).values(
-      data.settlementIds.map((sid) => ({ transferId, settlementId: sid }))
-    );
-  }
+  await db.insert(transferSettlements).values(
+    filteredIds.map((sid) => ({ transferId, settlementId: sid }))
+  );
 
   // 3. Update settlement transferStatus to "已转"
-  if (data.settlementIds.length > 0) {
-    await db
-      .update(settlements)
-      .set({ transferStatus: "已转" })
-      .where(inArray(settlements.id, data.settlementIds));
-  }
+  await db
+    .update(settlements)
+    .set({ transferStatus: "已转" })
+    .where(inArray(settlements.id, filteredIds));
 
-  return { id: transferId, settlementIds: data.settlementIds };
+  const skippedCount = data.settlementIds.length - filteredIds.length;
+  return { id: transferId, settlementIds: filteredIds, skippedCount };
 }
 
 export async function getTransferRecordsBySettlementId(settlementId: number) {
