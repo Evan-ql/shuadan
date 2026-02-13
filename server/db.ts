@@ -312,6 +312,44 @@ export async function getUntransferredSettlements() {
   return items;
 }
 
+export async function deleteTransferRecord(transferId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // 1. 查出该转账记录关联的所有订单
+  const associations = await db
+    .select({ settlementId: transferSettlements.settlementId })
+    .from(transferSettlements)
+    .where(eq(transferSettlements.transferId, transferId));
+
+  const settlementIds = associations.map((a) => a.settlementId);
+
+  // 2. 删除关联记录
+  await db.delete(transferSettlements).where(eq(transferSettlements.transferId, transferId));
+
+  // 3. 删除转账记录
+  await db.delete(transferRecords).where(eq(transferRecords.id, transferId));
+
+  // 4. 检查这些订单是否还有其他转账记录，如果没有则将状态改回"未转"
+  if (settlementIds.length > 0) {
+    for (const sid of settlementIds) {
+      const remaining = await db
+        .select({ id: transferSettlements.id })
+        .from(transferSettlements)
+        .where(eq(transferSettlements.settlementId, sid))
+        .limit(1);
+      if (remaining.length === 0) {
+        await db
+          .update(settlements)
+          .set({ transferStatus: "未转" })
+          .where(eq(settlements.id, sid));
+      }
+    }
+  }
+
+  return { deletedTransferId: transferId, affectedSettlements: settlementIds };
+}
+
 // ==================== Backup & Restore ====================
 
 export async function exportAllData() {

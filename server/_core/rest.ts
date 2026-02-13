@@ -14,6 +14,7 @@ import {
   importAllData,
   getSpecialStats,
   getSettlementStats,
+  deleteTransferRecord,
 } from "../db";
 
 // ==================== API Token 管理 ====================
@@ -372,6 +373,24 @@ export function createRestApiRouter(): Router {
       res.json(records);
     } catch (error) {
       handleError(res, error, "查询转账记录");
+    }
+  });
+
+  /**
+   * DELETE /transfers/:id
+   * 删除转账记录（同时清理关联并回滚订单状态）
+   */
+  router.delete("/transfers/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "无效的 ID" });
+      }
+
+      const result = await deleteTransferRecord(id);
+      res.json(result);
+    } catch (error) {
+      handleError(res, error, "删除转账记录");
     }
   });
 

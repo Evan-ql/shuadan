@@ -19,6 +19,7 @@ import {
   createTransferRecord,
   getTransferRecordsBySettlementId,
   getUntransferredSettlements,
+  deleteTransferRecord,
   exportAllData,
   importAllData,
   getSpecialStats,
@@ -235,6 +236,13 @@ export const appRouter = router({
     untransferred: protectedProcedure.query(async () => {
       return getUntransferredSettlements();
     }),
+
+    // 删除转账记录
+    delete: protectedProcedure
+      .input(z.object({ transferId: z.number() }))
+      .mutation(async ({ input }) => {
+        return deleteTransferRecord(input.transferId);
+      }),
   }),
 });
 

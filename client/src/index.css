@@ -402,19 +402,19 @@
   .sticky-col {
     position: sticky;
     z-index: 2;
-    background: inherit;
+    background: oklch(0.16 0.04 259) !important;
   }
   .sticky-col-header {
     position: sticky;
     z-index: 12 !important;
-    background: oklch(0.14 0.04 260 / 98%);
+    background: oklch(0.14 0.04 260) !important;
   }
   /* Row hover needs to propagate to sticky cells */
   tr:hover .sticky-col {
-    background: oklch(0.20 0.05 255 / 95%);
+    background: oklch(0.20 0.05 255) !important;
   }
   tr.bg-primary\/10 .sticky-col {
-    background: oklch(0.22 0.08 210 / 95%);
+    background: oklch(0.22 0.08 210) !important;
   }
   /* Right border shadow for last sticky column */
   .sticky-col-last::after {

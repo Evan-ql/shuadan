@@ -185,10 +185,25 @@ function TransferQueryDialog({
   onClose: () => void;
   settlementId: number | null;
 }) {
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const utils = trpc.useUtils();
+
   const { data: records, isLoading } = trpc.transfer.getBySettlement.useQuery(
     { settlementId: settlementId! },
     { enabled: open && settlementId !== null }
   );
+
+  const deleteMutation = trpc.transfer.delete.useMutation({
+    onSuccess: () => {
+      toast.success("转账记录已删除");
+      utils.transfer.getBySettlement.invalidate();
+      utils.settlement.list.invalidate();
+      utils.transfer.untransferred.invalidate();
+      utils.settlement.specialStats.invalidate();
+      setConfirmDeleteId(null);
+    },
+    onError: (err) => toast.error("删除失败: " + err.message),
+  });
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -219,9 +234,50 @@ function TransferQueryDialog({
                   <span className="text-xs font-heading tracking-wider text-primary">
                     转账记录 #{idx + 1}
                   </span>
-                  <span className="text-xs text-muted-foreground font-mono">
-                    {record.createdAt ? new Date(record.createdAt).toLocaleString("zh-CN") : "-"}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground font-mono">
+                      {record.createdAt ? new Date(record.createdAt).toLocaleString("zh-CN") : "-"}
+                    </span>
+                    {confirmDeleteId === record.id ? (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="h-6 text-xs px-2"
+                          onClick={() => deleteMutation.mutate({ transferId: record.id })}
+                          disabled={deleteMutation.isPending}
+                        >
+                          {deleteMutation.isPending ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            "确认删除"
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 text-xs px-2"
+                          onClick={() => setConfirmDeleteId(null)}
+                        >
+                          取消
+                        </Button>
+                      </div>
+                    ) : (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                            onClick={() => setConfirmDeleteId(record.id)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>删除此转账记录</TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
                 </div>
 
                 {/* 关联订单列表 */}
@@ -648,7 +704,7 @@ export default function SpecialList() {
       {/* Table */}
       <div className="blueprint-card rounded-sm overflow-auto max-h-[calc(100vh-320px)]">
         <table className="w-full border-collapse">
-          <thead className="sticky top-0 z-10 bg-[oklch(0.14_0.04_260/95%)] backdrop-blur-sm">
+          <thead className="sticky top-0 z-10 bg-[oklch(0.14_0.04_260)]">
             <tr>
               <th className={`${thClass} w-[40px] sticky-col sticky-col-header left-0`}>序号</th>
               <th className={`${thClass} sticky-col sticky-col-header left-[40px] min-w-[90px]`}>接单日期</th>
@@ -713,15 +769,15 @@ export default function SpecialList() {
                 return (
                   <tr key={item.id} className={`transition-colors hover:bg-primary/5 ${isEditing ? "bg-primary/10" : ""}`}>
                     {/* 1. 序号 */}
-                    <td className={`${tdClass} text-center text-muted-foreground text-xs sticky-col left-0 bg-[oklch(0.16_0.04_259/95%)]`}>
+                    <td className={`${tdClass} text-center text-muted-foreground text-xs sticky-col left-0`}>
                       {(data.page - 1) * data.pageSize + index + 1}
                     </td>
                     {/* 2. 接单日期（同步自结算明细，只读） */}
-                    <td className={`${tdClass} font-mono text-xs whitespace-nowrap sticky-col left-[40px] bg-[oklch(0.16_0.04_259/95%)]`}>
+                    <td className={`${tdClass} font-mono text-xs whitespace-nowrap sticky-col left-[40px]`}>
                       {formatDate(item.orderDate)}
                     </td>
                     {/* 3. 单号（同步自结算明细，只读） */}
-                    <td className={`${tdClass} sticky-col left-[130px] bg-[oklch(0.16_0.04_259/95%)]`}>
+                    <td className={`${tdClass} sticky-col left-[130px]`}>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span className="text-sm font-mono truncate max-w-[100px] inline-block">{item.orderNo || "-"}</span>
@@ -730,7 +786,7 @@ export default function SpecialList() {
                       </Tooltip>
                     </td>
                     {/* 4. 群名（同步自结算明细，只读） */}
-                    <td className={`${tdClass} font-medium sticky-col sticky-col-last left-[250px] bg-[oklch(0.16_0.04_259/95%)]`}>
+                    <td className={`${tdClass} font-medium sticky-col sticky-col-last left-[250px]`}>
                       {item.groupName || "-"}
                     </td>
                     {/* 5. 客户名（同步自结算明细，只读） */}
