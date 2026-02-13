@@ -397,3 +397,33 @@
     background: oklch(0.50 0.08 240 / 40%);
   }
 }
+
+  /* Sticky columns for table */
+  .sticky-col {
+    position: sticky;
+    z-index: 2;
+    background: inherit;
+  }
+  .sticky-col-header {
+    position: sticky;
+    z-index: 12 !important;
+    background: oklch(0.14 0.04 260 / 98%);
+  }
+  /* Row hover needs to propagate to sticky cells */
+  tr:hover .sticky-col {
+    background: oklch(0.20 0.05 255 / 95%);
+  }
+  tr.bg-primary\/10 .sticky-col {
+    background: oklch(0.22 0.08 210 / 95%);
+  }
+  /* Right border shadow for last sticky column */
+  .sticky-col-last::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: -6px;
+    bottom: 0;
+    width: 6px;
+    background: linear-gradient(90deg, oklch(0 0 0 / 15%), transparent);
+    pointer-events: none;
+  }

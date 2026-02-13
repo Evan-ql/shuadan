@@ -386,10 +386,10 @@ export default function SettlementList() {
         <table className="w-full border-collapse">
           <thead className="sticky top-0 z-10 bg-[oklch(0.14_0.04_260/95%)] backdrop-blur-sm">
             <tr>
-              <th className={`${thClass} w-[50px]`}>#</th>
-              <th className={thClass}>接单日期</th>
-              <th className={thClass}>单号</th>
-              <th className={thClass}>群名</th>
+              <th className={`${thClass} w-[50px] sticky-col sticky-col-header left-0`}>#</th>
+              <th className={`${thClass} sticky-col sticky-col-header left-[50px] min-w-[90px]`}>接单日期</th>
+              <th className={`${thClass} sticky-col sticky-col-header left-[140px] min-w-[130px]`}>单号</th>
+              <th className={`${thClass} sticky-col sticky-col-header sticky-col-last left-[270px] min-w-[100px]`}>群名</th>
               <th className={thClass}>客户名</th>
               <th className={thClass}>客服</th>
               <th className={`${thClass} text-right`}>原价</th>
@@ -429,17 +429,17 @@ export default function SettlementList() {
                 const isEditing = editingId === item.id;
                 return (
                   <tr key={item.id} className={`transition-colors hover:bg-primary/5 ${isEditing ? "bg-primary/10" : ""}`}>
-                    <td className={`${tdClass} text-center text-muted-foreground text-xs`}>
+                    <td className={`${tdClass} text-center text-muted-foreground text-xs sticky-col left-0 bg-[oklch(0.16_0.04_259/95%)]`}>
                       {(data.page - 1) * data.pageSize + index + 1}
                     </td>
-                    <td className={`${tdClass} font-mono text-xs whitespace-nowrap`}>
+                    <td className={`${tdClass} font-mono text-xs whitespace-nowrap sticky-col left-[50px] bg-[oklch(0.16_0.04_259/95%)]`}>
                       {isEditing ? (
                         <EditableDateCell editValues={editValues} onEditChange={onEditChange} />
                       ) : (
                         formatDate(item.orderDate)
                       )}
                     </td>
-                    <td className={tdClass}>
+                    <td className={`${tdClass} sticky-col left-[140px] bg-[oklch(0.16_0.04_259/95%)]`}>
                       {isEditing ? (
                         <EditableCell value={item.orderNo || ""} field="orderNo" isEditing={true} editValues={editValues} onEditChange={onEditChange} />
                       ) : (
@@ -451,7 +451,7 @@ export default function SettlementList() {
                         </Tooltip>
                       )}
                     </td>
-                    <td className={`${tdClass} font-medium`}>
+                    <td className={`${tdClass} font-medium sticky-col sticky-col-last left-[270px] bg-[oklch(0.16_0.04_259/95%)]`}>
                       {isEditing ? (
                         <EditableCell value={item.groupName || ""} field="groupName" isEditing={true} editValues={editValues} onEditChange={onEditChange} />
                       ) : (

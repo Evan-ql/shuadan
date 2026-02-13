@@ -650,10 +650,10 @@ export default function SpecialList() {
         <table className="w-full border-collapse">
           <thead className="sticky top-0 z-10 bg-[oklch(0.14_0.04_260/95%)] backdrop-blur-sm">
             <tr>
-              <th className={`${thClass} w-[40px]`}>序号</th>
-              <th className={thClass}>接单日期</th>
-              <th className={thClass}>单号</th>
-              <th className={thClass}>群名</th>
+              <th className={`${thClass} w-[40px] sticky-col sticky-col-header left-0`}>序号</th>
+              <th className={`${thClass} sticky-col sticky-col-header left-[40px] min-w-[90px]`}>接单日期</th>
+              <th className={`${thClass} sticky-col sticky-col-header left-[130px] min-w-[120px]`}>单号</th>
+              <th className={`${thClass} sticky-col sticky-col-header sticky-col-last left-[250px] min-w-[100px]`}>群名</th>
               <th className={thClass}>客户名</th>
               <th className={thClass}>客服</th>
               <th className={`${thClass} text-right`}>原价</th>
@@ -713,15 +713,15 @@ export default function SpecialList() {
                 return (
                   <tr key={item.id} className={`transition-colors hover:bg-primary/5 ${isEditing ? "bg-primary/10" : ""}`}>
                     {/* 1. 序号 */}
-                    <td className={`${tdClass} text-center text-muted-foreground text-xs`}>
+                    <td className={`${tdClass} text-center text-muted-foreground text-xs sticky-col left-0 bg-[oklch(0.16_0.04_259/95%)]`}>
                       {(data.page - 1) * data.pageSize + index + 1}
                     </td>
                     {/* 2. 接单日期（同步自结算明细，只读） */}
-                    <td className={`${tdClass} font-mono text-xs whitespace-nowrap`}>
+                    <td className={`${tdClass} font-mono text-xs whitespace-nowrap sticky-col left-[40px] bg-[oklch(0.16_0.04_259/95%)]`}>
                       {formatDate(item.orderDate)}
                     </td>
                     {/* 3. 单号（同步自结算明细，只读） */}
-                    <td className={tdClass}>
+                    <td className={`${tdClass} sticky-col left-[130px] bg-[oklch(0.16_0.04_259/95%)]`}>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span className="text-sm font-mono truncate max-w-[100px] inline-block">{item.orderNo || "-"}</span>
@@ -730,7 +730,7 @@ export default function SpecialList() {
                       </Tooltip>
                     </td>
                     {/* 4. 群名（同步自结算明细，只读） */}
-                    <td className={`${tdClass} font-medium`}>
+                    <td className={`${tdClass} font-medium sticky-col sticky-col-last left-[250px] bg-[oklch(0.16_0.04_259/95%)]`}>
                       {item.groupName || "-"}
                     </td>
                     {/* 5. 客户名（同步自结算明细，只读） */}
