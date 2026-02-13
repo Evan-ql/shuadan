@@ -46,6 +46,7 @@ import {
   DollarSign,
   TrendingUp,
   AlertTriangle,
+  Sparkles,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -525,7 +526,7 @@ export default function SpecialList() {
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="blueprint-card rounded-sm p-4 flex items-center gap-3">
           <div className="h-10 w-10 rounded-sm bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
             <AlertTriangle className="h-5 w-5 text-amber-400" />
@@ -545,6 +546,17 @@ export default function SpecialList() {
             <p className="text-[10px] font-heading tracking-widest uppercase text-muted-foreground">垫付金额</p>
             <p className="text-lg font-bold text-rose-400 font-mono">
               ¥{specialStats ? specialStats.advancedAmount.toFixed(2) : "--"}
+            </p>
+          </div>
+        </div>
+        <div className="blueprint-card rounded-sm p-4 flex items-center gap-3">
+          <div className="h-10 w-10 rounded-sm bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+            <Sparkles className="h-5 w-5 text-cyan-400" />
+          </div>
+          <div>
+            <p className="text-[10px] font-heading tracking-widest uppercase text-muted-foreground">预估特殊利润</p>
+            <p className="text-lg font-bold text-cyan-400 font-mono">
+              ¥{specialStats ? specialStats.estimatedSpecialProfit.toFixed(2) : "--"}
             </p>
           </div>
         </div>

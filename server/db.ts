@@ -439,10 +439,27 @@ export async function getSpecialStats() {
       eq(settlements.settlementStatus, "已结算")
     ));
 
+  // 4. 预估特殊利润：转账状态为已转、结算状态为未结算，加价部分实际到手金额总和
+  //    加价部分实际到手 = (加价后总价 - 原价) * 0.4 - 实际转出
+  const [estimatedProfitResult] = await db
+    .select({
+      total: sql<string>`COALESCE(SUM(
+        (CAST(${settlements.totalPrice} AS DECIMAL(12,2)) - CAST(${settlements.originalPrice} AS DECIMAL(12,2))) * 0.4
+        - CAST(${settlements.actualTransfer} AS DECIMAL(12,2))
+      ), 0)`
+    })
+    .from(settlements)
+    .where(and(
+      eq(settlements.isSpecial, true),
+      eq(settlements.transferStatus, "已转"),
+      sql`(${settlements.settlementStatus} = '' OR ${settlements.settlementStatus} = '未结算' OR ${settlements.settlementStatus} IS NULL)`
+    ));
+
   return {
     untransferredAmount: Number(untransferredResult.total) || 0,
     advancedAmount: Number(advancedResult.total) || 0,
     extraProfit: Number(profitResult.total) || 0,
+    estimatedSpecialProfit: Number(estimatedProfitResult.total) || 0,
   };
 }
 
