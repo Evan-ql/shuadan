@@ -443,12 +443,7 @@ export default function SettlementList() {
                       {isEditing ? (
                         <EditableCell value={item.orderNo || ""} field="orderNo" isEditing={true} editValues={editValues} onEditChange={onEditChange} />
                       ) : (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="text-sm font-mono truncate max-w-[120px] inline-block">{item.orderNo || "-"}</span>
-                          </TooltipTrigger>
-                          {item.orderNo && <TooltipContent>{item.orderNo}</TooltipContent>}
-                        </Tooltip>
+                        <span className="text-sm font-mono whitespace-nowrap select-all">{item.orderNo || "-"}</span>
                       )}
                     </td>
                     <td className={`${tdClass} font-medium sticky-col sticky-col-last left-[270px]`}>

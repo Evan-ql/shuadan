@@ -778,12 +778,7 @@ export default function SpecialList() {
                     </td>
                     {/* 3. 单号（同步自结算明细，只读） */}
                     <td className={`${tdClass} sticky-col left-[130px]`}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="text-sm font-mono truncate max-w-[100px] inline-block">{item.orderNo || "-"}</span>
-                        </TooltipTrigger>
-                        {item.orderNo && <TooltipContent>{item.orderNo}</TooltipContent>}
-                      </Tooltip>
+                      <span className="text-sm font-mono whitespace-nowrap select-all">{item.orderNo || "-"}</span>
                     </td>
                     {/* 4. 群名（同步自结算明细，只读） */}
                     <td className={`${tdClass} font-medium sticky-col sticky-col-last left-[250px]`}>
