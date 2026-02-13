@@ -876,7 +876,7 @@ export default function SpecialList() {
                     <td className={`${tdClass} text-center`}>
                       <StatusBadge
                         value={item.registrationStatus ?? ""}
-                        onClick={item.registrationStatus === "同步失败" ? () => setLocation("/sync") : undefined}
+                        onClick={item.registrationStatus === "同步失败" ? () => setLocation(`/sync?highlight=${item.id}`) : undefined}
                       />
                     </td>
                     {/* 19. 结算状态（同步自结算明细，只读） */}

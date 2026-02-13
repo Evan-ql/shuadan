@@ -1,6 +1,6 @@
 import { trpc } from "@/lib/trpc";
-import { useLocation } from "wouter";
-import { useState } from "react";
+import { useLocation, useSearch } from "wouter";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -269,6 +269,23 @@ function FailureEditRow({
 // ==================== 主页面 ====================
 export default function SyncPage() {
   const [, setLocation] = useLocation();
+  const searchString = useSearch();
+  const highlightSettlementId = new URLSearchParams(searchString).get("highlight");
+  const [highlightId, setHighlightId] = useState<number | null>(highlightSettlementId ? Number(highlightSettlementId) : null);
+  const highlightRef = useRef<HTMLTableRowElement>(null);
+
+  // 高亮闪烁后3秒自动消除
+  useEffect(() => {
+    if (highlightId !== null) {
+      // 滚动到高亮行
+      setTimeout(() => {
+        highlightRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 300);
+      const timer = setTimeout(() => setHighlightId(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightId]);
+
   const [tokenInput, setTokenInput] = useState("");
   const [showTokenInput, setShowTokenInput] = useState(false);
   const [syncResult, setSyncResult] = useState<any>(null);
@@ -563,7 +580,8 @@ export default function SyncPage() {
                   return (
                     <tr
                       key={item.id}
-                      className={`transition-colors hover:bg-primary/5 ${isEditing ? "bg-primary/10" : ""}`}
+                      ref={item.settlementId === highlightId ? highlightRef : undefined}
+                      className={`transition-colors hover:bg-primary/5 ${isEditing ? "bg-primary/10" : ""} ${item.settlementId === highlightId ? "bg-red-500/20 animate-pulse ring-1 ring-red-500/50" : ""}`}
                     >
                       {isEditing ? (
                         <FailureEditRow

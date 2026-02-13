@@ -486,7 +486,7 @@ export default function SettlementList() {
                       ) : (
                         <StatusBadge
                           value={item.registrationStatus ?? ""}
-                          onClick={item.registrationStatus === "同步失败" ? () => setLocation("/sync") : undefined}
+                          onClick={item.registrationStatus === "同步失败" ? () => setLocation(`/sync?highlight=${item.id}`) : undefined}
                         />
                       )}
                     </td>
