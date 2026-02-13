@@ -382,9 +382,9 @@ export default function SettlementList() {
       </div>
 
       {/* Table */}
-      <div className="blueprint-card rounded-sm overflow-x-auto">
+      <div className="blueprint-card rounded-sm overflow-auto max-h-[calc(100vh-280px)]">
         <table className="w-full border-collapse">
-          <thead>
+          <thead className="sticky top-0 z-10 bg-[oklch(0.14_0.04_260/95%)] backdrop-blur-sm">
             <tr>
               <th className={`${thClass} w-[50px]`}>#</th>
               <th className={thClass}>接单日期</th>
