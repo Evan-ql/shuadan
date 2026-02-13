@@ -1,6 +1,6 @@
 import { eq, like, and, desc, sql, SQL, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, settlements, InsertSettlement, Settlement, transferRecords, transferSettlements } from "../drizzle/schema";
+import { InsertUser, users, settlements, InsertSettlement, Settlement, transferRecords, transferSettlements, settings, syncFailures } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -252,7 +252,7 @@ export async function getTransferRecordsBySettlementId(settlementId: number) {
   if (associations.length === 0) return [];
 
   // 去重 transferIds
-  const transferIds = [...new Set(associations.map((a) => a.transferId))];
+  const transferIds = Array.from(new Set(associations.map((a) => a.transferId)));
   const records = await db
     .select()
     .from(transferRecords)
@@ -268,7 +268,7 @@ export async function getTransferRecordsBySettlementId(settlementId: number) {
         .from(transferSettlements)
         .where(eq(transferSettlements.transferId, record.id));
 
-      const relatedSettlementIds = [...new Set(relatedAssociations.map((a) => a.settlementId))];
+      const relatedSettlementIds = Array.from(new Set(relatedAssociations.map((a) => a.settlementId)));
 
       let relatedSettlements: any[] = [];
       if (relatedSettlementIds.length > 0) {
@@ -545,4 +545,218 @@ export async function getSettlementStats() {
     monthlyOrderCount: Number(countResult.count) || 0,
     monthlyEstimatedIncome: (Number(incomeResult.total) || 0) * 0.4,
   };
+}
+
+// ==================== Settings CRUD ====================
+
+export async function getSetting(key: string): Promise<string | null> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db.select().from(settings).where(eq(settings.key, key)).limit(1);
+  return result.length > 0 ? (result[0].value ?? null) : null;
+}
+
+export async function setSetting(key: string, value: string): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.insert(settings).values({ key, value }).onDuplicateKeyUpdate({
+    set: { value },
+  });
+}
+
+// ==================== Sync Failures CRUD ====================
+
+export async function createSyncFailure(data: {
+  settlementId: number;
+  failReason: string;
+  syncType: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // 先检查是否已有pending的失败记录，有则更新
+  const existing = await db
+    .select()
+    .from(syncFailures)
+    .where(
+      and(
+        eq(syncFailures.settlementId, data.settlementId),
+        eq(syncFailures.status, "pending")
+      )
+    )
+    .limit(1);
+
+  if (existing.length > 0) {
+    await db
+      .update(syncFailures)
+      .set({ failReason: data.failReason, syncType: data.syncType })
+      .where(eq(syncFailures.id, existing[0].id));
+    return existing[0].id;
+  }
+
+  const result = await db.insert(syncFailures).values({
+    settlementId: data.settlementId,
+    failReason: data.failReason,
+    syncType: data.syncType,
+    status: "pending",
+  });
+  return result[0].insertId;
+}
+
+export async function listSyncFailures(params: {
+  page: number;
+  pageSize: number;
+  status?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const conditions: SQL[] = [];
+  if (params.status) {
+    conditions.push(eq(syncFailures.status, params.status));
+  } else {
+    // 默认只显示pending
+    conditions.push(eq(syncFailures.status, "pending"));
+  }
+
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const [items, countResult] = await Promise.all([
+    db
+      .select({
+        id: syncFailures.id,
+        settlementId: syncFailures.settlementId,
+        failReason: syncFailures.failReason,
+        syncType: syncFailures.syncType,
+        status: syncFailures.status,
+        createdAt: syncFailures.createdAt,
+        // Join settlement data
+        orderNo: settlements.orderNo,
+        groupName: settlements.groupName,
+        customerName: settlements.customerName,
+        customerService: settlements.customerService,
+        originalPrice: settlements.originalPrice,
+        totalPrice: settlements.totalPrice,
+        isSpecial: settlements.isSpecial,
+        orderDate: settlements.orderDate,
+      })
+      .from(syncFailures)
+      .innerJoin(settlements, eq(syncFailures.settlementId, settlements.id))
+      .where(whereClause)
+      .orderBy(desc(syncFailures.createdAt))
+      .limit(params.pageSize)
+      .offset((params.page - 1) * params.pageSize),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(syncFailures)
+      .where(whereClause),
+  ]);
+
+  return {
+    items,
+    total: Number(countResult[0].count),
+    page: params.page,
+    pageSize: params.pageSize,
+    totalPages: Math.ceil(Number(countResult[0].count) / params.pageSize),
+  };
+}
+
+export async function updateSyncFailureStatus(id: number, status: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.update(syncFailures).set({ status }).where(eq(syncFailures.id, id));
+  return { success: true };
+}
+
+export async function deleteSyncFailure(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.delete(syncFailures).where(eq(syncFailures.id, id));
+  return { success: true };
+}
+
+// ==================== Sync Helpers ====================
+
+/**
+ * 获取所有未登记且未结算的订单（用于上传到创致）
+ */
+export async function getUnsyncedSettlements(isSpecial: boolean) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const items = await db
+    .select()
+    .from(settlements)
+    .where(
+      and(
+        eq(settlements.isSpecial, isSpecial),
+        sql`(${settlements.settlementStatus} = '' OR ${settlements.settlementStatus} = '未结算' OR ${settlements.settlementStatus} IS NULL)`,
+        sql`(${settlements.registrationStatus} = '' OR ${settlements.registrationStatus} = '未登记' OR ${settlements.registrationStatus} IS NULL)`
+      )
+    )
+    .orderBy(desc(settlements.id));
+
+  return items;
+}
+
+/**
+ * 批量更新登记状态
+ */
+export async function batchUpdateRegistrationStatus(ids: number[], status: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  if (ids.length === 0) return;
+  await db
+    .update(settlements)
+    .set({ registrationStatus: status })
+    .where(inArray(settlements.id, ids));
+}
+
+/**
+ * 批量更新结算状态
+ */
+export async function batchUpdateSettlementStatus(ids: number[], status: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  if (ids.length === 0) return;
+  await db
+    .update(settlements)
+    .set({ settlementStatus: status })
+    .where(inArray(settlements.id, ids));
+}
+
+/**
+ * 获取所有未结算的订单（用于同步结算状态）
+ */
+export async function getUnsettledSettlements() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db
+    .select()
+    .from(settlements)
+    .where(
+      sql`(${settlements.settlementStatus} = '' OR ${settlements.settlementStatus} = '未结算' OR ${settlements.settlementStatus} IS NULL)`
+    );
+}
+
+/**
+ * 获取所有未登记的订单（用于同步登记状态）
+ */
+export async function getUnregisteredSettlements() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db
+    .select()
+    .from(settlements)
+    .where(
+      sql`(${settlements.registrationStatus} = '' OR ${settlements.registrationStatus} = '未登记' OR ${settlements.registrationStatus} IS NULL)`
+    );
 }

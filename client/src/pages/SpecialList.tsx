@@ -104,7 +104,7 @@ function calcOrderActualIncome(totalPrice: string | null | undefined, originalPr
   return calcMarkupActualIncome(totalPrice, originalPrice, actualTransfer) + calcOriginalPriceIncome(originalPrice);
 }
 
-function StatusBadge({ value }: { value: string }) {
+function StatusBadge({ value, onClick }: { value: string; onClick?: () => void }) {
   if (!value) return <span className="text-muted-foreground/50">-</span>;
   const colorMap: Record<string, string> = {
     已转: "text-emerald-400 border-emerald-400/30 bg-emerald-400/10",
@@ -112,13 +112,18 @@ function StatusBadge({ value }: { value: string }) {
     部分转: "text-sky-400 border-sky-400/30 bg-sky-400/10",
     已登记: "text-emerald-400 border-emerald-400/30 bg-emerald-400/10",
     未登记: "text-amber-400 border-amber-400/30 bg-amber-400/10",
+    同步失败: "text-red-400 border-red-400/30 bg-red-400/10 cursor-pointer hover:bg-red-400/20",
     已结算: "text-emerald-400 border-emerald-400/30 bg-emerald-400/10",
     未结算: "text-amber-400 border-amber-400/30 bg-amber-400/10",
     部分结算: "text-sky-400 border-sky-400/30 bg-sky-400/10",
   };
   const cls = colorMap[value] || "text-muted-foreground border-border bg-muted/30";
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded-sm ${cls}`}>
+    <span
+      className={`inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded-sm ${cls}`}
+      onClick={onClick}
+      title={value === "同步失败" ? "点击查看失败详情" : undefined}
+    >
       {value}
     </span>
   );
@@ -143,7 +148,7 @@ function EditableCell({
 
   if (type === "select") {
     const options: Record<string, string[]> = {
-      registrationStatus: ["", "已登记", "未登记"],
+      registrationStatus: ["", "已登记", "未登记", "同步失败"],
       settlementStatus: ["", "已结算", "未结算", "部分结算"],
     };
     return (
@@ -869,7 +874,10 @@ export default function SpecialList() {
                     </td>
                     {/* 18. 登记状态（同步自结算明细，只读） */}
                     <td className={`${tdClass} text-center`}>
-                      <StatusBadge value={item.registrationStatus ?? ""} />
+                      <StatusBadge
+                        value={item.registrationStatus ?? ""}
+                        onClick={item.registrationStatus === "同步失败" ? () => setLocation("/sync") : undefined}
+                      />
                     </td>
                     {/* 19. 结算状态（同步自结算明细，只读） */}
                     <td className={`${tdClass} text-center`}>

@@ -87,3 +87,36 @@ export const transferSettlements = mysqlTable("transfer_settlements", {
 
 export type TransferSettlement = typeof transferSettlements.$inferSelect;
 export type InsertTransferSettlement = typeof transferSettlements.$inferInsert;
+
+/**
+ * 系统设置表（存储Token等配置）
+ */
+export const settings = mysqlTable("settings", {
+  id: int("id").autoincrement().primaryKey(),
+  key: varchar("key", { length: 128 }).notNull().unique(),
+  value: text("value"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Setting = typeof settings.$inferSelect;
+export type InsertSetting = typeof settings.$inferInsert;
+
+/**
+ * 同步失败记录表
+ */
+export const syncFailures = mysqlTable("sync_failures", {
+  id: int("id").autoincrement().primaryKey(),
+  /** 关联的结算记录ID */
+  settlementId: int("settlementId").notNull(),
+  /** 失败原因 */
+  failReason: text("failReason"),
+  /** 同步类型: normal=普通单, special=特殊单 */
+  syncType: varchar("syncType", { length: 32 }).default("normal"),
+  /** 状态: pending=待处理, ignored=已忽略, resolved=已解决 */
+  status: varchar("status", { length: 32 }).default("pending"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SyncFailure = typeof syncFailures.$inferSelect;
+export type InsertSyncFailure = typeof syncFailures.$inferInsert;

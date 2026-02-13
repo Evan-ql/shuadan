@@ -24,7 +24,14 @@ import {
   importAllData,
   getSpecialStats,
   getSettlementStats,
+  getSetting,
+  setSetting,
+  listSyncFailures,
+  updateSyncFailureStatus,
+  deleteSyncFailure,
 } from "./db";
+import { verifyToken } from "./chuangzhi";
+import { executeSyncFlow, retrySingleSync } from "./syncService";
 
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
@@ -242,6 +249,87 @@ export const appRouter = router({
       .input(z.object({ transferId: z.number() }))
       .mutation(async ({ input }) => {
         return deleteTransferRecord(input.transferId);
+      }),
+  }),
+
+  // ==================== 创致同步模块 ====================
+  chuangzhi: router({
+    // Token管理
+    getToken: protectedProcedure.query(async () => {
+      const token = await getSetting("chuangzhi_token");
+      return { token: token ? "已配置" : null, hasToken: !!token };
+    }),
+
+    saveToken: protectedProcedure
+      .input(z.object({ token: z.string().min(1, "Token不能为空") }))
+      .mutation(async ({ input }) => {
+        await setSetting("chuangzhi_token", input.token);
+        return { success: true };
+      }),
+
+    verifyToken: protectedProcedure.mutation(async () => {
+      const token = await getSetting("chuangzhi_token");
+      if (!token) {
+        return { valid: false, message: "未配置Token" };
+      }
+      return verifyToken(token);
+    }),
+
+    // 执行同步
+    sync: protectedProcedure
+      .input(
+        z.object({
+          mode: z.enum(["normal", "special"]),
+        })
+      )
+      .mutation(async ({ input }) => {
+        return executeSyncFlow(input.mode);
+      }),
+
+    // 单条重新同步
+    retrySync: protectedProcedure
+      .input(
+        z.object({
+          syncFailureId: z.number(),
+          settlementId: z.number(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const settlement = await getSettlementById(input.settlementId);
+        if (!settlement) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "订单记录不存在",
+          });
+        }
+        return retrySingleSync(input.settlementId, input.syncFailureId, settlement);
+      }),
+
+    // 失败记录列表
+    failures: protectedProcedure
+      .input(
+        z.object({
+          page: z.number().min(1).default(1),
+          pageSize: z.number().min(1).max(100).default(20),
+          status: z.string().optional(),
+        })
+      )
+      .query(async ({ input }) => {
+        return listSyncFailures(input);
+      }),
+
+    // 忽略失败记录
+    ignoreFailure: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        return updateSyncFailureStatus(input.id, "ignored");
+      }),
+
+    // 删除失败记录
+    deleteFailure: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        return deleteSyncFailure(input.id);
       }),
   }),
 });

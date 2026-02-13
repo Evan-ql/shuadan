@@ -19,7 +19,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/useMobile";
-import { ClipboardList, LogOut, PanelLeft, PlusCircle, LayoutGrid, Loader2, Star, Database } from "lucide-react";
+import { ClipboardList, LogOut, PanelLeft, PlusCircle, LayoutGrid, Loader2, Star, Database, RefreshCw } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
@@ -34,6 +34,7 @@ const menuItems = [
   { icon: LayoutGrid, label: "结算明细", path: "/" },
   { icon: Star, label: "特殊单明细", path: "/special" },
   { icon: PlusCircle, label: "新增记录", path: "/create" },
+  { icon: RefreshCw, label: "创致同步", path: "/sync" },
   { icon: Database, label: "数据备份", path: "/backup" },
 ];
 
