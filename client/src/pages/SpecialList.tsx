@@ -565,7 +565,7 @@ export default function SpecialList() {
             <TrendingUp className="h-5 w-5 text-emerald-400" />
           </div>
           <div>
-            <p className="text-[10px] font-heading tracking-widest uppercase text-muted-foreground">额外利润</p>
+            <p className="text-[10px] font-heading tracking-widest uppercase text-muted-foreground">已产生特殊利润</p>
             <p className="text-lg font-bold text-emerald-400 font-mono">
               ¥{specialStats ? specialStats.extraProfit.toFixed(2) : "--"}
             </p>
