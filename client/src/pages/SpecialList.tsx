@@ -191,13 +191,13 @@ function TransferQueryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Eye className="h-5 w-5 text-primary" />
             转账记录查询
           </DialogTitle>
-          <DialogDescription>查看该订单关联的转账记录和截图凭证</DialogDescription>
+          <DialogDescription>查看该订单关联的转账记录、截图凭证和同批转账订单</DialogDescription>
         </DialogHeader>
 
         {isLoading ? (
@@ -222,6 +222,43 @@ function TransferQueryDialog({
                     {record.createdAt ? new Date(record.createdAt).toLocaleString("zh-CN") : "-"}
                   </span>
                 </div>
+
+                {/* 关联订单列表 */}
+                {record.relatedSettlements && record.relatedSettlements.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">本次转账包含 {record.relatedSettlements.length} 笔订单：</p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-muted/30">
+                            <th className="px-2 py-1 text-left border border-primary/10">单号</th>
+                            <th className="px-2 py-1 text-left border border-primary/10">群名</th>
+                            <th className="px-2 py-1 text-left border border-primary/10">客户</th>
+                            <th className="px-2 py-1 text-right border border-primary/10">原价</th>
+                            <th className="px-2 py-1 text-right border border-primary/10">总价</th>
+                            <th className="px-2 py-1 text-right border border-primary/10">应转</th>
+                            <th className="px-2 py-1 text-right border border-primary/10">实转</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {record.relatedSettlements.map((s: any) => (
+                            <tr key={s.id} className="hover:bg-muted/20">
+                              <td className="px-2 py-1 border border-primary/10 font-mono">{s.orderNo || "-"}</td>
+                              <td className="px-2 py-1 border border-primary/10">{s.groupName || "-"}</td>
+                              <td className="px-2 py-1 border border-primary/10">{s.customerName || "-"}</td>
+                              <td className="px-2 py-1 border border-primary/10 text-right">{s.originalPrice || "0"}</td>
+                              <td className="px-2 py-1 border border-primary/10 text-right">{s.totalPrice || "0"}</td>
+                              <td className="px-2 py-1 border border-primary/10 text-right">{s.shouldTransfer || "0"}</td>
+                              <td className="px-2 py-1 border border-primary/10 text-right">{s.actualTransfer || "0"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* 转账截图 */}
                 {record.imageData && (
                   <div className="border border-primary/10 rounded-sm overflow-hidden">
                     <img

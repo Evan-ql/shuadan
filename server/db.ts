@@ -239,14 +239,50 @@ export async function getTransferRecordsBySettlementId(settlementId: number) {
 
   if (associations.length === 0) return [];
 
-  const transferIds = associations.map((a) => a.transferId);
+  // 去重 transferIds
+  const transferIds = [...new Set(associations.map((a) => a.transferId))];
   const records = await db
     .select()
     .from(transferRecords)
     .where(inArray(transferRecords.id, transferIds))
     .orderBy(desc(transferRecords.createdAt));
 
-  return records;
+  // 为每条转账记录查询关联的所有订单信息
+  const result = await Promise.all(
+    records.map(async (record) => {
+      // 查出这条转账记录关联的所有 settlementId
+      const relatedAssociations = await db
+        .select()
+        .from(transferSettlements)
+        .where(eq(transferSettlements.transferId, record.id));
+
+      const relatedSettlementIds = [...new Set(relatedAssociations.map((a) => a.settlementId))];
+
+      let relatedSettlements: any[] = [];
+      if (relatedSettlementIds.length > 0) {
+        relatedSettlements = await db
+          .select({
+            id: settlements.id,
+            orderNo: settlements.orderNo,
+            groupName: settlements.groupName,
+            customerName: settlements.customerName,
+            originalPrice: settlements.originalPrice,
+            totalPrice: settlements.totalPrice,
+            shouldTransfer: settlements.shouldTransfer,
+            actualTransfer: settlements.actualTransfer,
+          })
+          .from(settlements)
+          .where(inArray(settlements.id, relatedSettlementIds));
+      }
+
+      return {
+        ...record,
+        relatedSettlements,
+      };
+    })
+  );
+
+  return result;
 }
 
 export async function getUntransferredSettlements() {
