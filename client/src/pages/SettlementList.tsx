@@ -288,14 +288,25 @@ export default function SettlementList() {
             </span>
           )}
         </div>
-        <Button
-          onClick={() => setLocation("/create")}
-          size="sm"
-          className="font-heading tracking-wider uppercase text-xs"
-        >
-          <PlusCircle className="h-4 w-4 mr-1" />
-          新增记录
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => setLocation("/batch-create")}
+            size="sm"
+            className="font-heading tracking-wider uppercase text-xs"
+          >
+            <PlusCircle className="h-4 w-4 mr-1" />
+            批量新增
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setLocation("/create")}
+            size="sm"
+            className="font-heading tracking-wider uppercase text-xs"
+          >
+            <PlusCircle className="h-4 w-4 mr-1" />
+            单条新增
+          </Button>
+        </div>
       </div>
 
       {/* Statistics Cards */}

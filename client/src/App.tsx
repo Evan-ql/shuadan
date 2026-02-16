@@ -9,6 +9,7 @@ import SettlementList from "./pages/SettlementList";
 import SpecialList from "./pages/SpecialList";
 import CreateSettlement from "./pages/CreateSettlement";
 import EditSettlement from "./pages/EditSettlement";
+import BatchCreateSettlement from "./pages/BatchCreateSettlement";
 import BackupPage from "./pages/BackupPage";
 import SyncPage from "./pages/SyncPage";
 
@@ -19,6 +20,7 @@ function Router() {
         <Route path="/" component={SettlementList} />
         <Route path="/special" component={SpecialList} />
         <Route path="/create" component={CreateSettlement} />
+        <Route path="/batch-create" component={BatchCreateSettlement} />
         <Route path="/edit/:id" component={EditSettlement} />
         <Route path="/sync" component={SyncPage} />
         <Route path="/backup" component={BackupPage} />

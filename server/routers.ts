@@ -8,6 +8,7 @@ import { sdk } from "./_core/sdk";
 import { ONE_YEAR_MS } from "@shared/const";
 import {
   createSettlement,
+  batchCreateSettlements,
   listSettlements,
   updateSettlement,
   deleteSettlement,
@@ -132,6 +133,20 @@ export const appRouter = router({
           ...input,
           createdBy: ctx.user.id,
         });
+      }),
+
+    batchCreate: protectedProcedure
+      .input(
+        z.object({
+          items: z.array(settlementInput).min(1, "至少需要一条记录").max(500, "单次最多500条"),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const dataList = input.items.map((item) => ({
+          ...item,
+          createdBy: ctx.user.id,
+        }));
+        return batchCreateSettlements(dataList);
       }),
 
     list: protectedProcedure

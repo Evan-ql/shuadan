@@ -99,6 +99,15 @@ export async function createSettlement(data: InsertSettlement) {
   return getSettlementById(insertId);
 }
 
+export async function batchCreateSettlements(dataList: InsertSettlement[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (dataList.length === 0) return { count: 0 };
+
+  await db.insert(settlements).values(dataList);
+  return { count: dataList.length };
+}
+
 export async function getSettlementById(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
