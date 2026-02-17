@@ -394,46 +394,54 @@ export async function importAllData(backupData: {
 
   const stats = { settlements: 0, transferRecords: 0, transferSettlements: 0 };
 
-  // Clear existing data (in reverse dependency order)
-  await db.delete(transferSettlements);
-  await db.delete(transferRecords);
-  await db.delete(settlements);
+  // Disable foreign key checks to avoid constraint errors during restore
+  await db.execute(sql`SET FOREIGN_KEY_CHECKS = 0`);
 
-  // Import settlements
-  if (backupData.data.settlements && backupData.data.settlements.length > 0) {
-    for (const item of backupData.data.settlements) {
-      // Convert date strings back to Date objects
-      if (item.orderDate && typeof item.orderDate === 'string') {
-        item.orderDate = new Date(item.orderDate);
-      }
-      if (item.createdAt && typeof item.createdAt === 'string') {
-        item.createdAt = new Date(item.createdAt);
-      }
-      if (item.updatedAt && typeof item.updatedAt === 'string') {
-        item.updatedAt = new Date(item.updatedAt);
-      }
-      await db.insert(settlements).values(item);
-      stats.settlements++;
-    }
-  }
+  try {
+    // Clear existing data (in reverse dependency order)
+    await db.delete(transferSettlements);
+    await db.delete(transferRecords);
+    await db.delete(settlements);
 
-  // Import transfer records
-  if (backupData.data.transferRecords && backupData.data.transferRecords.length > 0) {
-    for (const item of backupData.data.transferRecords) {
-      if (item.createdAt && typeof item.createdAt === 'string') {
-        item.createdAt = new Date(item.createdAt);
+    // Import settlements
+    if (backupData.data.settlements && backupData.data.settlements.length > 0) {
+      for (const item of backupData.data.settlements) {
+        // Convert date strings back to Date objects
+        if (item.orderDate && typeof item.orderDate === 'string') {
+          item.orderDate = new Date(item.orderDate);
+        }
+        if (item.createdAt && typeof item.createdAt === 'string') {
+          item.createdAt = new Date(item.createdAt);
+        }
+        if (item.updatedAt && typeof item.updatedAt === 'string') {
+          item.updatedAt = new Date(item.updatedAt);
+        }
+        await db.insert(settlements).values(item);
+        stats.settlements++;
       }
-      await db.insert(transferRecords).values(item);
-      stats.transferRecords++;
     }
-  }
 
-  // Import transfer-settlement associations
-  if (backupData.data.transferSettlements && backupData.data.transferSettlements.length > 0) {
-    for (const item of backupData.data.transferSettlements) {
-      await db.insert(transferSettlements).values(item);
-      stats.transferSettlements++;
+    // Import transfer records
+    if (backupData.data.transferRecords && backupData.data.transferRecords.length > 0) {
+      for (const item of backupData.data.transferRecords) {
+        if (item.createdAt && typeof item.createdAt === 'string') {
+          item.createdAt = new Date(item.createdAt);
+        }
+        await db.insert(transferRecords).values(item);
+        stats.transferRecords++;
+      }
     }
+
+    // Import transfer-settlement associations
+    if (backupData.data.transferSettlements && backupData.data.transferSettlements.length > 0) {
+      for (const item of backupData.data.transferSettlements) {
+        await db.insert(transferSettlements).values(item);
+        stats.transferSettlements++;
+      }
+    }
+  } finally {
+    // Re-enable foreign key checks
+    await db.execute(sql`SET FOREIGN_KEY_CHECKS = 1`);
   }
 
   return stats;
