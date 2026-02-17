@@ -94,9 +94,15 @@ export async function createSettlement(data: InsertSettlement) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const result = await db.insert(settlements).values(data);
-  const insertId = result[0].insertId;
-  return getSettlementById(insertId);
+  try {
+    const result = await db.insert(settlements).values(data);
+    const insertId = result[0].insertId;
+    return getSettlementById(insertId);
+  } catch (err: any) {
+    const mysqlError = err.cause?.sqlMessage || err.cause?.message || '';
+    console.error('[createSettlement] Failed:', mysqlError, 'Data:', JSON.stringify(data));
+    throw new Error(`创建失败: ${mysqlError || err.message}`);
+  }
 }
 
 export async function batchCreateSettlements(dataList: InsertSettlement[]) {
@@ -104,8 +110,14 @@ export async function batchCreateSettlements(dataList: InsertSettlement[]) {
   if (!db) throw new Error("Database not available");
   if (dataList.length === 0) return { count: 0 };
 
-  await db.insert(settlements).values(dataList);
-  return { count: dataList.length };
+  try {
+    await db.insert(settlements).values(dataList);
+    return { count: dataList.length };
+  } catch (err: any) {
+    const mysqlError = err.cause?.sqlMessage || err.cause?.message || '';
+    console.error('[batchCreateSettlements] Failed:', mysqlError);
+    throw new Error(`批量创建失败: ${mysqlError || err.message}`);
+  }
 }
 
 export async function getSettlementById(id: number) {
@@ -483,9 +495,10 @@ export async function importAllData(backupData: {
             )`);
           stats.settlements++;
         } catch (err: any) {
-          console.error(`[Import] Failed to insert settlement #${item.id}:`, err.message);
+          const mysqlErr = err.cause?.sqlMessage || err.cause?.message || err.message;
+          console.error(`[Import] Failed to insert settlement #${item.id}:`, mysqlErr);
           console.error(`[Import] Settlement data:`, JSON.stringify(item));
-          throw new Error(`导入结算记录 #${item.id} 失败: ${err.message}`);
+          throw new Error(`导入结算记录 #${item.id} 失败: ${mysqlErr}`);
         }
       }
     }
@@ -509,8 +522,9 @@ export async function importAllData(backupData: {
             )`);
           stats.transferRecords++;
         } catch (err: any) {
-          console.error(`[Import] Failed to insert transfer_record #${item.id}:`, err.message);
-          throw new Error(`导入转账记录 #${item.id} 失败: ${err.message}`);
+          const mysqlErr = err.cause?.sqlMessage || err.cause?.message || err.message;
+          console.error(`[Import] Failed to insert transfer_record #${item.id}:`, mysqlErr);
+          throw new Error(`导入转账记录 #${item.id} 失败: ${mysqlErr}`);
         }
       }
     }
@@ -528,8 +542,9 @@ export async function importAllData(backupData: {
             )`);
           stats.transferSettlements++;
         } catch (err: any) {
-          console.error(`[Import] Failed to insert transfer_settlement #${item.id}:`, err.message);
-          throw new Error(`导入转账关联 #${item.id} 失败: ${err.message}`);
+          const mysqlErr = err.cause?.sqlMessage || err.cause?.message || err.message;
+          console.error(`[Import] Failed to insert transfer_settlement #${item.id}:`, mysqlErr);
+          throw new Error(`导入转账关联 #${item.id} 失败: ${mysqlErr}`);
         }
       }
     }
