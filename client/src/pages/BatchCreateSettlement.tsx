@@ -33,6 +33,18 @@ import {
 } from "lucide-react";
 import * as XLSX from "xlsx";
 
+// ---------- helpers ----------
+
+let _idCounter = 0;
+function generateId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  // Fallback for browsers that don't support crypto.randomUUID
+  _idCounter++;
+  return `${Date.now()}-${_idCounter}-${Math.random().toString(36).slice(2, 11)}`;
+}
+
 // ---------- types ----------
 
 interface RowData {
@@ -48,7 +60,7 @@ interface RowData {
 
 function createEmptyRow(): RowData {
   return {
-    id: crypto.randomUUID(),
+    id: generateId(),
     orderDate: null,
     orderNo: "",
     groupName: "",
@@ -218,7 +230,7 @@ export default function BatchCreateSettlement() {
     setRows((prev) => {
       const idx = prev.findIndex((r) => r.id === id);
       if (idx === -1) return prev;
-      const clone = { ...prev[idx], id: crypto.randomUUID() };
+      const clone = { ...prev[idx], id: generateId() };
       const next = [...prev];
       next.splice(idx + 1, 0, clone);
       return next;
