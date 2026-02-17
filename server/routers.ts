@@ -131,6 +131,7 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         return createSettlement({
           ...input,
+          isSpecial: input.isSpecial ? 1 : 0,
           createdBy: ctx.user.id,
         });
       }),
@@ -144,6 +145,7 @@ export const appRouter = router({
       .mutation(async ({ input, ctx }) => {
         const dataList = input.items.map((item) => ({
           ...item,
+          isSpecial: item.isSpecial ? 1 : 0,
           createdBy: ctx.user.id,
         }));
         return batchCreateSettlements(dataList);

@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, decimal, bigint, boolean } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, decimal, bigint, tinyint } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -47,8 +47,8 @@ export const settlements = mysqlTable("settlements", {
   registrationStatus: varchar("registrationStatus", { length: 32 }).default(""),
   /** 结算状态 */
   settlementStatus: varchar("settlementStatus", { length: 32 }).default(""),
-  /** 是否为特殊单 */
-  isSpecial: boolean("isSpecial").default(false),
+  /** 是否为特殊单 (0=普通, 1=特殊) */
+  isSpecial: tinyint("isSpecial").default(0),
   /** 备注 */
   remark: text("remark"),
   /** 创建人ID */

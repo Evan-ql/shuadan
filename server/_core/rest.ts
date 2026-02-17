@@ -224,7 +224,7 @@ export function createRestApiRouter(): Router {
         transferStatus: req.body.transferStatus || "",
         registrationStatus: req.body.registrationStatus || "",
         settlementStatus: req.body.settlementStatus || "",
-        isSpecial: req.body.isSpecial === true,
+        isSpecial: req.body.isSpecial === true ? 1 : 0,
         remark: req.body.remark || "",
         createdBy: 1, // API 创建的记录默认 createdBy = 1
       };
@@ -266,7 +266,11 @@ export function createRestApiRouter(): Router {
 
       for (const field of allowedFields) {
         if (req.body[field] !== undefined) {
-          data[field] = req.body[field];
+          if (field === 'isSpecial') {
+            data[field] = req.body[field] ? 1 : 0;
+          } else {
+            data[field] = req.body[field];
+          }
         }
       }
 

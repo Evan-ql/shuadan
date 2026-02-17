@@ -39,20 +39,26 @@ export default function BackupPage() {
     setIsExporting(true);
     try {
       const result = await exportQuery.refetch();
-      if (result.data) {
-        const jsonStr = JSON.stringify(result.data, null, 2);
-        const blob = new Blob([jsonStr], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-        a.href = url;
-        a.download = `settlement_backup_${date}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        toast.success("数据备份文件已下载");
+      if (result.error) {
+        toast.error("导出失败: " + (result.error.message || "未知错误"));
+        return;
       }
+      if (!result.data) {
+        toast.error("导出失败: 未获取到数据");
+        return;
+      }
+      const jsonStr = JSON.stringify(result.data, null, 2);
+      const blob = new Blob([jsonStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+      a.href = url;
+      a.download = `settlement_backup_${date}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("数据备份文件已下载");
     } catch (err: any) {
       toast.error("导出失败: " + (err.message || "未知错误"));
     } finally {

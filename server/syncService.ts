@@ -308,7 +308,7 @@ export async function retrySingleSync(
     return { success: false, message: `Token无效: ${tokenResult.message}` };
   }
 
-  const isSpecial = settlement.isSpecial ?? false;
+  const isSpecial = !!(settlement.isSpecial);
   const applyAmount = isSpecial
     ? parseFloat(settlement.totalPrice || "0")
     : parseFloat(settlement.originalPrice || "0");

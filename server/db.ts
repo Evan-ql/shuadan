@@ -123,7 +123,7 @@ export async function listSettlements(params: {
   transferStatus?: string;
   registrationStatus?: string;
   settlementStatus?: string;
-  isSpecial?: boolean;
+  isSpecial?: boolean | number;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -149,7 +149,7 @@ export async function listSettlements(params: {
 
   // Filter by isSpecial
   if (params.isSpecial !== undefined) {
-    conditions.push(eq(settlements.isSpecial, params.isSpecial));
+    conditions.push(eq(settlements.isSpecial, params.isSpecial ? 1 : 0));
   }
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
@@ -197,7 +197,7 @@ export async function toggleSpecial(id: number, isSpecial: boolean) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  await db.update(settlements).set({ isSpecial }).where(eq(settlements.id, id));
+  await db.update(settlements).set({ isSpecial: isSpecial ? 1 : 0 }).where(eq(settlements.id, id));
   return getSettlementById(id);
 }
 
@@ -569,7 +569,7 @@ export async function getSpecialStats() {
     .select({ total: sql<string>`COALESCE(SUM(${settlements.actualTransfer}), 0)` })
     .from(settlements)
     .where(and(
-      eq(settlements.isSpecial, true),
+      eq(settlements.isSpecial, 1),
       sql`(${settlements.transferStatus} = '' OR ${settlements.transferStatus} = '未转' OR ${settlements.transferStatus} IS NULL)`
     ));
 
@@ -578,7 +578,7 @@ export async function getSpecialStats() {
     .select({ total: sql<string>`COALESCE(SUM(${settlements.actualTransfer}), 0)` })
     .from(settlements)
     .where(and(
-      eq(settlements.isSpecial, true),
+      eq(settlements.isSpecial, 1),
       eq(settlements.transferStatus, "已转"),
       sql`(${settlements.settlementStatus} = '' OR ${settlements.settlementStatus} = '未结算' OR ${settlements.settlementStatus} IS NULL)`
     ));
@@ -594,7 +594,7 @@ export async function getSpecialStats() {
     })
     .from(settlements)
     .where(and(
-      eq(settlements.isSpecial, true),
+      eq(settlements.isSpecial, 1),
       eq(settlements.transferStatus, "已转"),
       eq(settlements.settlementStatus, "已结算")
     ));
@@ -610,7 +610,7 @@ export async function getSpecialStats() {
     })
     .from(settlements)
     .where(and(
-      eq(settlements.isSpecial, true),
+      eq(settlements.isSpecial, 1),
       eq(settlements.transferStatus, "已转"),
       sql`(${settlements.settlementStatus} = '' OR ${settlements.settlementStatus} = '未结算' OR ${settlements.settlementStatus} IS NULL)`
     ));
@@ -803,7 +803,7 @@ export async function getUnsyncedSettlements(isSpecial: boolean) {
     .from(settlements)
     .where(
       and(
-        eq(settlements.isSpecial, isSpecial),
+        eq(settlements.isSpecial, isSpecial ? 1 : 0),
         sql`(${settlements.settlementStatus} = '' OR ${settlements.settlementStatus} = '未结算' OR ${settlements.settlementStatus} IS NULL)`,
         sql`(${settlements.registrationStatus} = '' OR ${settlements.registrationStatus} = '未登记' OR ${settlements.registrationStatus} IS NULL)`
       )
