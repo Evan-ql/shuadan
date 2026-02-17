@@ -400,87 +400,137 @@ export async function importAllData(backupData: {
 
   try {
     // Clear existing data
-    try { await db.execute(sql`TRUNCATE TABLE transfer_settlements`); } catch(e) { /* ignore */ }
-    try { await db.execute(sql`TRUNCATE TABLE transfer_records`); } catch(e) { /* ignore */ }
-    try { await db.execute(sql`TRUNCATE TABLE settlements`); } catch(e) { /* ignore */ }
+    try { await db.execute(sql`TRUNCATE TABLE transfer_settlements`); } catch(e) { console.warn('[Import] truncate transfer_settlements failed:', e); }
+    try { await db.execute(sql`TRUNCATE TABLE transfer_records`); } catch(e) { console.warn('[Import] truncate transfer_records failed:', e); }
+    try { await db.execute(sql`TRUNCATE TABLE settlements`); } catch(e) { console.warn('[Import] truncate settlements failed:', e); }
 
-    // Helper: format date string for MySQL
-    const formatDate = (val: any): string | null => {
-      if (!val) return null;
+    // Helper: format ISO date string to MySQL datetime
+    const formatTimestamp = (val: any): string => {
+      if (!val) return new Date().toISOString().slice(0, 19).replace('T', ' ');
       if (typeof val === 'string') {
-        // ISO string -> MySQL datetime
-        return val.replace('T', ' ').replace('Z', '').replace('.000', '');
+        // "2026-02-12T16:37:20.000Z" -> "2026-02-12 16:37:20"
+        return val.slice(0, 19).replace('T', ' ');
       }
       if (val instanceof Date) {
-        return val.toISOString().replace('T', ' ').replace('Z', '').replace('.000', '');
+        return val.toISOString().slice(0, 19).replace('T', ' ');
       }
-      return null;
+      // fallback
+      return new Date().toISOString().slice(0, 19).replace('T', ' ');
+    };
+
+    // Helper: safe string
+    const str = (val: any, fallback = ''): string => {
+      if (val === null || val === undefined) return fallback;
+      return String(val);
+    };
+
+    // Helper: safe number or null
+    const numOrNull = (val: any): number | null => {
+      if (val === null || val === undefined) return null;
+      const n = Number(val);
+      return isNaN(n) ? null : n;
     };
 
     // Import settlements using raw SQL
     if (backupData.data.settlements && backupData.data.settlements.length > 0) {
       for (const item of backupData.data.settlements) {
-        const createdAt = formatDate(item.createdAt);
-        const updatedAt = formatDate(item.updatedAt);
-        const isSpecialVal = item.isSpecial ? 1 : 0;
-        const orderDate = item.orderDate ?? null;
+        try {
+          const id = Number(item.id);
+          const orderDate = numOrNull(item.orderDate);
+          const orderNo = str(item.orderNo);
+          const groupName = str(item.groupName);
+          const customerName = str(item.customerName);
+          const customerService = str(item.customerService);
+          const originalPrice = str(item.originalPrice, '0');
+          const totalPrice = str(item.totalPrice, '0');
+          const shouldTransfer = str(item.shouldTransfer, '0');
+          const actualTransfer = str(item.actualTransfer, '0');
+          const transferStatus = str(item.transferStatus);
+          const registrationStatus = str(item.registrationStatus);
+          const settlementStatus = str(item.settlementStatus);
+          const isSpecialVal = item.isSpecial ? 1 : 0;
+          const remark = str(item.remark);
+          const createdBy = numOrNull(item.createdBy);
+          const createdAt = formatTimestamp(item.createdAt);
+          const updatedAt = formatTimestamp(item.updatedAt);
 
-        await db.execute(sql`INSERT INTO settlements
-          (id, orderDate, orderNo, groupName, customerName, customerService,
-           originalPrice, totalPrice, shouldTransfer, actualTransfer,
-           transferStatus, registrationStatus, settlementStatus,
-           isSpecial, remark, createdBy, createdAt, updatedAt)
-          VALUES (
-            ${item.id},
-            ${orderDate},
-            ${item.orderNo || ''},
-            ${item.groupName || ''},
-            ${item.customerName || ''},
-            ${item.customerService || ''},
-            ${item.originalPrice || '0'},
-            ${item.totalPrice || '0'},
-            ${item.shouldTransfer || '0'},
-            ${item.actualTransfer || '0'},
-            ${item.transferStatus || ''},
-            ${item.registrationStatus || ''},
-            ${item.settlementStatus || ''},
-            ${isSpecialVal},
-            ${item.remark || ''},
-            ${item.createdBy ?? null},
-            ${createdAt},
-            ${updatedAt}
-          )`);
-        stats.settlements++;
+          console.log(`[Import] Settlement #${id}: orderDate=${orderDate}, isSpecial=${isSpecialVal}, createdAt=${createdAt}`);
+
+          await db.execute(sql`INSERT INTO settlements
+            (id, orderDate, orderNo, groupName, customerName, customerService,
+             originalPrice, totalPrice, shouldTransfer, actualTransfer,
+             transferStatus, registrationStatus, settlementStatus,
+             isSpecial, remark, createdBy, createdAt, updatedAt)
+            VALUES (
+              ${id},
+              ${orderDate},
+              ${orderNo},
+              ${groupName},
+              ${customerName},
+              ${customerService},
+              ${originalPrice},
+              ${totalPrice},
+              ${shouldTransfer},
+              ${actualTransfer},
+              ${transferStatus},
+              ${registrationStatus},
+              ${settlementStatus},
+              ${isSpecialVal},
+              ${remark},
+              ${createdBy},
+              ${createdAt},
+              ${updatedAt}
+            )`);
+          stats.settlements++;
+        } catch (err: any) {
+          console.error(`[Import] Failed to insert settlement #${item.id}:`, err.message);
+          console.error(`[Import] Settlement data:`, JSON.stringify(item));
+          throw new Error(`导入结算记录 #${item.id} 失败: ${err.message}`);
+        }
       }
     }
 
     // Import transfer records using raw SQL
     if (backupData.data.transferRecords && backupData.data.transferRecords.length > 0) {
       for (const item of backupData.data.transferRecords) {
-        const createdAt = formatDate(item.createdAt);
-        await db.execute(sql`INSERT INTO transfer_records
-          (id, imageData, note, createdAt)
-          VALUES (
-            ${item.id},
-            ${item.imageData || null},
-            ${item.note || null},
-            ${createdAt}
-          )`);
-        stats.transferRecords++;
+        try {
+          const id = Number(item.id);
+          const imageData = item.imageData ?? null;
+          const note = item.note ?? null;
+          const createdAt = formatTimestamp(item.createdAt);
+
+          await db.execute(sql`INSERT INTO transfer_records
+            (id, imageData, note, createdAt)
+            VALUES (
+              ${id},
+              ${imageData},
+              ${note},
+              ${createdAt}
+            )`);
+          stats.transferRecords++;
+        } catch (err: any) {
+          console.error(`[Import] Failed to insert transfer_record #${item.id}:`, err.message);
+          throw new Error(`导入转账记录 #${item.id} 失败: ${err.message}`);
+        }
       }
     }
 
     // Import transfer-settlement associations using raw SQL
     if (backupData.data.transferSettlements && backupData.data.transferSettlements.length > 0) {
       for (const item of backupData.data.transferSettlements) {
-        await db.execute(sql`INSERT INTO transfer_settlements
-          (id, transferId, settlementId)
-          VALUES (
-            ${item.id},
-            ${item.transferId},
-            ${item.settlementId}
-          )`);
-        stats.transferSettlements++;
+        try {
+          await db.execute(sql`INSERT INTO transfer_settlements
+            (id, transferId, settlementId)
+            VALUES (
+              ${Number(item.id)},
+              ${Number(item.transferId)},
+              ${Number(item.settlementId)}
+            )`);
+          stats.transferSettlements++;
+        } catch (err: any) {
+          console.error(`[Import] Failed to insert transfer_settlement #${item.id}:`, err.message);
+          throw new Error(`导入转账关联 #${item.id} 失败: ${err.message}`);
+        }
       }
     }
   } finally {
