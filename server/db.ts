@@ -394,86 +394,96 @@ export async function importAllData(backupData: {
 
   const stats = { settlements: 0, transferRecords: 0, transferSettlements: 0 };
 
-  // Disable foreign key checks and use raw SQL for maximum compatibility
+  // Use raw SQL for maximum compatibility
   await db.execute(sql`SET FOREIGN_KEY_CHECKS = 0`);
   await db.execute(sql`SET SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO'`);
 
   try {
-    // Clear existing data using raw SQL TRUNCATE for reliability
-    try { await db.execute(sql`TRUNCATE TABLE transfer_settlements`); } catch(e) { console.log('truncate transfer_settlements skipped:', e); }
-    try { await db.execute(sql`TRUNCATE TABLE transfer_records`); } catch(e) { console.log('truncate transfer_records skipped:', e); }
-    try { await db.execute(sql`TRUNCATE TABLE settlements`); } catch(e) { console.log('truncate settlements skipped:', e); }
+    // Clear existing data
+    try { await db.execute(sql`TRUNCATE TABLE transfer_settlements`); } catch(e) { /* ignore */ }
+    try { await db.execute(sql`TRUNCATE TABLE transfer_records`); } catch(e) { /* ignore */ }
+    try { await db.execute(sql`TRUNCATE TABLE settlements`); } catch(e) { /* ignore */ }
 
-    // Import settlements
+    // Helper: format date string for MySQL
+    const formatDate = (val: any): string | null => {
+      if (!val) return null;
+      if (typeof val === 'string') {
+        // ISO string -> MySQL datetime
+        return val.replace('T', ' ').replace('Z', '').replace('.000', '');
+      }
+      if (val instanceof Date) {
+        return val.toISOString().replace('T', ' ').replace('Z', '').replace('.000', '');
+      }
+      return null;
+    };
+
+    // Import settlements using raw SQL
     if (backupData.data.settlements && backupData.data.settlements.length > 0) {
       for (const item of backupData.data.settlements) {
-        // Convert date strings back to Date objects
-        if (item.orderDate && typeof item.orderDate === 'string') {
-          item.orderDate = new Date(item.orderDate);
-        }
-        if (item.createdAt && typeof item.createdAt === 'string') {
-          item.createdAt = new Date(item.createdAt);
-        }
-        if (item.updatedAt && typeof item.updatedAt === 'string') {
-          item.updatedAt = new Date(item.updatedAt);
-        }
-        // Remove any fields not in schema
-        const cleanItem = {
-          id: item.id,
-          orderDate: item.orderDate,
-          orderNo: item.orderNo || '',
-          groupName: item.groupName || '',
-          customerName: item.customerName || '',
-          customerService: item.customerService || '',
-          originalPrice: item.originalPrice || '0',
-          totalPrice: item.totalPrice || '0',
-          shouldTransfer: item.shouldTransfer || '0',
-          actualTransfer: item.actualTransfer || '0',
-          transferStatus: item.transferStatus || '',
-          registrationStatus: item.registrationStatus || '',
-          settlementStatus: item.settlementStatus || '',
-          isSpecial: item.isSpecial || false,
-          remark: item.remark || '',
-          createdBy: item.createdBy,
-          createdAt: item.createdAt,
-          updatedAt: item.updatedAt,
-        };
-        await db.insert(settlements).values(cleanItem);
+        const createdAt = formatDate(item.createdAt);
+        const updatedAt = formatDate(item.updatedAt);
+        const isSpecialVal = item.isSpecial ? 1 : 0;
+        const orderDate = item.orderDate ?? null;
+
+        await db.execute(sql`INSERT INTO settlements
+          (id, orderDate, orderNo, groupName, customerName, customerService,
+           originalPrice, totalPrice, shouldTransfer, actualTransfer,
+           transferStatus, registrationStatus, settlementStatus,
+           isSpecial, remark, createdBy, createdAt, updatedAt)
+          VALUES (
+            ${item.id},
+            ${orderDate},
+            ${item.orderNo || ''},
+            ${item.groupName || ''},
+            ${item.customerName || ''},
+            ${item.customerService || ''},
+            ${item.originalPrice || '0'},
+            ${item.totalPrice || '0'},
+            ${item.shouldTransfer || '0'},
+            ${item.actualTransfer || '0'},
+            ${item.transferStatus || ''},
+            ${item.registrationStatus || ''},
+            ${item.settlementStatus || ''},
+            ${isSpecialVal},
+            ${item.remark || ''},
+            ${item.createdBy ?? null},
+            ${createdAt},
+            ${updatedAt}
+          )`);
         stats.settlements++;
       }
     }
 
-    // Import transfer records
+    // Import transfer records using raw SQL
     if (backupData.data.transferRecords && backupData.data.transferRecords.length > 0) {
       for (const item of backupData.data.transferRecords) {
-        if (item.createdAt && typeof item.createdAt === 'string') {
-          item.createdAt = new Date(item.createdAt);
-        }
-        const cleanItem = {
-          id: item.id,
-          imageData: item.imageData || null,
-          note: item.note || null,
-          createdAt: item.createdAt,
-        };
-        await db.insert(transferRecords).values(cleanItem);
+        const createdAt = formatDate(item.createdAt);
+        await db.execute(sql`INSERT INTO transfer_records
+          (id, imageData, note, createdAt)
+          VALUES (
+            ${item.id},
+            ${item.imageData || null},
+            ${item.note || null},
+            ${createdAt}
+          )`);
         stats.transferRecords++;
       }
     }
 
-    // Import transfer-settlement associations
+    // Import transfer-settlement associations using raw SQL
     if (backupData.data.transferSettlements && backupData.data.transferSettlements.length > 0) {
       for (const item of backupData.data.transferSettlements) {
-        const cleanItem = {
-          id: item.id,
-          transferId: item.transferId,
-          settlementId: item.settlementId,
-        };
-        await db.insert(transferSettlements).values(cleanItem);
+        await db.execute(sql`INSERT INTO transfer_settlements
+          (id, transferId, settlementId)
+          VALUES (
+            ${item.id},
+            ${item.transferId},
+            ${item.settlementId}
+          )`);
         stats.transferSettlements++;
       }
     }
   } finally {
-    // Re-enable foreign key checks
     await db.execute(sql`SET FOREIGN_KEY_CHECKS = 1`);
   }
 
