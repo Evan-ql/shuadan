@@ -394,14 +394,15 @@ export async function importAllData(backupData: {
 
   const stats = { settlements: 0, transferRecords: 0, transferSettlements: 0 };
 
-  // Disable foreign key checks to avoid constraint errors during restore
+  // Disable foreign key checks and use raw SQL for maximum compatibility
   await db.execute(sql`SET FOREIGN_KEY_CHECKS = 0`);
+  await db.execute(sql`SET SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO'`);
 
   try {
-    // Clear existing data (in reverse dependency order)
-    await db.delete(transferSettlements);
-    await db.delete(transferRecords);
-    await db.delete(settlements);
+    // Clear existing data using raw SQL TRUNCATE for reliability
+    try { await db.execute(sql`TRUNCATE TABLE transfer_settlements`); } catch(e) { console.log('truncate transfer_settlements skipped:', e); }
+    try { await db.execute(sql`TRUNCATE TABLE transfer_records`); } catch(e) { console.log('truncate transfer_records skipped:', e); }
+    try { await db.execute(sql`TRUNCATE TABLE settlements`); } catch(e) { console.log('truncate settlements skipped:', e); }
 
     // Import settlements
     if (backupData.data.settlements && backupData.data.settlements.length > 0) {
@@ -416,7 +417,28 @@ export async function importAllData(backupData: {
         if (item.updatedAt && typeof item.updatedAt === 'string') {
           item.updatedAt = new Date(item.updatedAt);
         }
-        await db.insert(settlements).values(item);
+        // Remove any fields not in schema
+        const cleanItem = {
+          id: item.id,
+          orderDate: item.orderDate,
+          orderNo: item.orderNo || '',
+          groupName: item.groupName || '',
+          customerName: item.customerName || '',
+          customerService: item.customerService || '',
+          originalPrice: item.originalPrice || '0',
+          totalPrice: item.totalPrice || '0',
+          shouldTransfer: item.shouldTransfer || '0',
+          actualTransfer: item.actualTransfer || '0',
+          transferStatus: item.transferStatus || '',
+          registrationStatus: item.registrationStatus || '',
+          settlementStatus: item.settlementStatus || '',
+          isSpecial: item.isSpecial || false,
+          remark: item.remark || '',
+          createdBy: item.createdBy,
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt,
+        };
+        await db.insert(settlements).values(cleanItem);
         stats.settlements++;
       }
     }
@@ -427,7 +449,13 @@ export async function importAllData(backupData: {
         if (item.createdAt && typeof item.createdAt === 'string') {
           item.createdAt = new Date(item.createdAt);
         }
-        await db.insert(transferRecords).values(item);
+        const cleanItem = {
+          id: item.id,
+          imageData: item.imageData || null,
+          note: item.note || null,
+          createdAt: item.createdAt,
+        };
+        await db.insert(transferRecords).values(cleanItem);
         stats.transferRecords++;
       }
     }
@@ -435,7 +463,12 @@ export async function importAllData(backupData: {
     // Import transfer-settlement associations
     if (backupData.data.transferSettlements && backupData.data.transferSettlements.length > 0) {
       for (const item of backupData.data.transferSettlements) {
-        await db.insert(transferSettlements).values(item);
+        const cleanItem = {
+          id: item.id,
+          transferId: item.transferId,
+          settlementId: item.settlementId,
+        };
+        await db.insert(transferSettlements).values(cleanItem);
         stats.transferSettlements++;
       }
     }
