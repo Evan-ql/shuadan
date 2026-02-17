@@ -171,10 +171,13 @@ function LoginPage() {
         </form>
 
         {/* Bottom dimension marker */}
-        <div className="w-full flex items-center gap-2 text-muted-foreground/40 text-[10px] font-heading tracking-widest">
-          <div className="h-px flex-1 bg-border" />
-          <span>SEC · SYS · V1.0</span>
-          <div className="h-px flex-1 bg-border" />
+        <div className="w-full flex flex-col items-center gap-1 text-muted-foreground/40 text-[10px] font-heading tracking-widest">
+          <div className="w-full flex items-center gap-2">
+            <div className="h-px flex-1 bg-border" />
+            <span>SEC · SYS · V{__APP_VERSION__}</span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+          <span className="text-[9px] text-muted-foreground/25">BUILD: {new Date(__BUILD_TIME__).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</span>
         </div>
       </div>
     </div>
@@ -320,6 +323,11 @@ function DashboardLayoutContent({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            <div className="text-center text-[9px] text-muted-foreground/30 font-heading tracking-wider group-data-[collapsible=icon]:hidden">
+              <span>V{__APP_VERSION__}</span>
+              <span className="mx-1">·</span>
+              <span>{new Date(__BUILD_TIME__).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</span>
+            </div>
           </SidebarFooter>
         </Sidebar>
         <div
